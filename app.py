@@ -149,7 +149,7 @@ def summary_csv(results):
 
 # ---------------- Tampilan ----------------
 st.title("🔎 Detektor Teks AI")
-st.caption("Statistik dihitung lokal; aspek subjektif dinilai Claude Haiku 5.5. "
+st.caption("Statistik dihitung lokal; aspek subjektif dinilai menggunakan API MAX PRO "
            "Hasilnya probabilistik, bukan bukti pasti.")
 
 with st.sidebar:
