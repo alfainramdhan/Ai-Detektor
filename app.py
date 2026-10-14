@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import time
 import html
 import tempfile
@@ -13,9 +14,9 @@ import detector_core as core
 MAX_FILES = 10
 
 # --- teks yang bisa Anda ubah ---
-BADGE = "Claude Haiku 5.5"
+BADGE = "Buatan karya anak bangsa"
 SUBTITLE = ("Periksa apakah sebuah tulisan kemungkinan dibuat AI. "
-            "Statistik dihitung lokal, aspek subjektif dinilai Claude.")
+            "Statistik dihitung langsung, aspek yang butuh pemahaman bahasa dinilai oleh model AI.")
 
 CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -90,6 +91,20 @@ def html_block(*lines):
 
 
 st.markdown("<style>" + CSS + "</style>", unsafe_allow_html=True)
+
+# Label tabel tanpa nama merek
+core.LABELS.update({
+    "perplexity": "Perplexity (estimasi AI)",
+    "typo": "Kesalahan ketik/ejaan (penilaian AI)",
+    "personal": "Detail personal/konkret (penilaian AI)",
+    "struktur": "Struktur dokumen terlalu rapi (penilaian AI)",
+})
+
+
+def scrub(text):
+    """Pastikan teks dari mesin/error tidak menampilkan nama merek penyedia model."""
+    text = re.sub(r"(?i)claude[\w.\-]*", "AI", str(text))
+    return re.sub(r"(?i)anthropic", "penyedia AI", text)
 
 
 # ---------------- Kunci & pengaturan ----------------
@@ -166,6 +181,17 @@ def read_upload(f):
             os.remove(path)
 
 
+def render_category(total, text):
+    if total <= 25:
+        st.success(text)
+    elif total <= 50:
+        st.info(text)
+    elif total <= 75:
+        st.warning(text)
+    else:
+        st.error(text)
+
+
 def render_result(name, r):
     total = r["total"]
     tone = "green" if total <= 25 else "blue" if total <= 50 else "orange" if total <= 75 else "red"
@@ -185,18 +211,18 @@ def render_result(name, r):
         '</div>',
     ), unsafe_allow_html=True)
     for n in r["notes"]:
-        st.caption("ℹ️ " + n)
+        st.caption("ℹ️ " + scrub(n))
 
     tab_a, tab_b, tab_c = st.tabs(["A. Skor parameter", "B. Checklist Ya/Tidak", "C. Contoh & saran"])
     with tab_a:
         df = pd.DataFrame([{
-            "Parameter": x["parameter"], "Nilai": x["nilai"],
+            "Parameter": scrub(x["parameter"]), "Nilai": x["nilai"],
             "Skor (0-100)": "n/a" if x["skor"] is None else str(x["skor"]),
             "Bobot (%)": str(x["bobot"]),
             "Kontribusi": "n/a" if x["kontribusi"] is None else str(x["kontribusi"]),
         } for x in r["rows"]])
         st.dataframe(df, hide_index=True)
-        st.caption("0 = mirip manusia, 100 = mirip AI. Perplexity hanya estimasi dari Claude.")
+        st.caption("0 = mirip manusia, 100 = mirip AI. Perplexity hanya estimasi dari model AI.")
     with tab_b:
         dfc = pd.DataFrame([{
             "No": i, "Indikator": label,
@@ -208,8 +234,8 @@ def render_result(name, r):
             st.write("Tidak ada kalimat yang menonjol sebagai indikasi AI.")
         for i, c in enumerate(r["contoh"], 1):
             st.markdown(f"**{i}.** “{c.get('kutipan', '')}”")
-            st.caption("Alasan: " + str(c.get("alasan", "")))
-        st.markdown("**Saran:** " + str(r["saran"]))
+            st.caption("Alasan: " + scrub(c.get("alasan", "")))
+        st.markdown("**Saran:** " + scrub(r["saran"]))
 
 
 def summary_csv(results):
@@ -233,23 +259,22 @@ st.markdown(html_block(
     '</div>',
     '<div class="feats">',
     '<div class="feat"><div class="ico">📊</div><b>Statistik lokal</b><span>Variasi kalimat, kosakata, transisi, dan pola klise dihitung langsung.</span></div>',
-    '<div class="feat"><div class="ico">🧠</div><b>Penilaian Claude</b><span>Aspek yang butuh pemahaman bahasa dinilai oleh model.</span></div>',
+    '<div class="feat"><div class="ico">🧠</div><b>Penilaian AI</b><span>Aspek yang butuh pemahaman bahasa dinilai oleh model AI.</span></div>',
     '<div class="feat"><div class="ico">🔍</div><b>Transparan</b><span>Setiap parameter, skor, dan bobotnya bisa dilihat.</span></div>',
     '</div>',
 ), unsafe_allow_html=True)
 
+default_key = server_key()
+typed_key = ""
 with st.sidebar:
     st.header("Pengaturan")
-    default_key = server_key()
-    typed_key = st.text_input(
-        "API key Claude", type="password",
-        placeholder="Sudah terisi dari server" if default_key else "sk-ant-...",
-        help="Dapatkan di platform.claude.com. Key tidak disimpan di aplikasi ini.",
-    )
-    api_key = typed_key or default_key
-    st.caption(f"Model: `{core.MODEL}`")
-    st.caption(f"Penilaian Claude memakai maks. {core.MAX_CHARS_LLM:,} karakter pertama; "
-               "biaya sekitar Rp10-50 per dokumen.")
+    if not default_key:
+        typed_key = st.text_input(
+            "API key", type="password", placeholder="Masukkan API key layanan AI Anda",
+            help="Key hanya dipakai selama sesi ini dan tidak disimpan.",
+        )
+    st.caption(f"Penilaian AI memakai maks. {core.MAX_CHARS_LLM:,} karakter pertama dokumen.")
+api_key = typed_key or default_key
 
 agree = True
 if DRIVE_ON:
@@ -275,7 +300,7 @@ with card:
 
 if run:
     if not api_key:
-        st.error("Masukkan API key Claude di sidebar terlebih dahulu.")
+        st.error("Masukkan API key di sidebar terlebih dahulu.")
         st.stop()
     if not agree:
         st.error("Centang persetujuan penyimpanan dokumen terlebih dahulu.")
@@ -286,7 +311,7 @@ if run:
             drive_save(f.name, f.getbuffer(), f.type or "application/octet-stream")
             inputs.append((f.name, read_upload(f)))
         except Exception as e:
-            st.error(f"{f.name}: gagal dibaca ({e})")
+            st.error(f"{f.name}: gagal dibaca ({scrub(e)})")
     if files and len(files) > MAX_FILES:
         st.warning(f"Hanya {MAX_FILES} file pertama yang diproses.")
     if pasted.strip():
@@ -306,7 +331,7 @@ if run:
             try:
                 results.append((name, core.evaluate(client, text)))
             except Exception as e:
-                st.error(f"{name}: gagal dianalisis. {e}")
+                st.error(f"{name}: gagal dianalisis. {scrub(e)}")
     st.session_state["results"] = results
     if results:
         drive_save("hasil_deteksi.csv", summary_csv(results), "text/csv")
@@ -319,4 +344,11 @@ if results:
         st.divider()
     st.download_button("⬇️ Unduh ringkasan skor (CSV)", summary_csv(results),
                        file_name="hasil_deteksi.csv", mime="text/csv")
-    st.markdown(f'<div class="fine">{html.escape(core.DISCLAIMER)}</div>', unsafe_allow_html=True)
+
+st.markdown(html_block(
+    '<div class="fine">',
+    '<b style="color:#1d1d1f">Ini buatan karya anak bangsa</b><br>',
+    (html.escape(core.DISCLAIMER) + "<br>") if results else "",
+    'Teks dokumen diproses oleh layanan AI pihak ketiga untuk dinilai.',
+    '</div>',
+), unsafe_allow_html=True)
