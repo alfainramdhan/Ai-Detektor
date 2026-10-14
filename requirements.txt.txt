@@ -1,0 +1,7 @@
+streamlit
+anthropic
+pypdf
+python-docx
+pandas
+google-api-python-client
+google-auth
