@@ -330,5 +330,4 @@ def evaluate(client, text):
     }
 
 
-DISCLAIMER = ("Hasil ini probabilistik, BUKAN bukti pasti. Penulis akademik formal dan non-native "
-              "sering terdeteksi AI secara keliru. Jangan dijadikan satu-satunya dasar keputusan.")
+DISCLAIMER = ("Dibuat khusus Teman Teman Apeng.")
