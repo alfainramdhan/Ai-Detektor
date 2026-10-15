@@ -13,7 +13,7 @@ import detector_core as core
 
 MAX_FILES = 10
 
-# --- teks yang bisa Anda ubah ---
+# --- Teks & Informasi Utama ---
 BADGE = "this application was made specifically for Apeng's Friends"
 SUBTITLE = ("Periksa apakah sebuah tulisan kemungkinan dibuat AI. "
             "Statistik dihitung langsung, aspek yang butuh pemahaman bahasa dinilai oleh model AI.")
@@ -26,10 +26,22 @@ CSS = """
 .section-title,.file-title,.fine{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
 
-/* Sembunyikan menu bawaan, footer, hiasan, dan toolbar kanan atas (termasuk tombol GitHub) */
-#MainMenu, footer, [data-testid="stDecoration"], [data-testid="stAppToolbar"] {
+/* Sembunyikan Toolbar Atas, Tombol GitHub, Menu, Footer, dan Tombol Manage App */
+#MainMenu, 
+footer, 
+[data-testid="stDecoration"], 
+[data-testid="stAppToolbar"],
+.stAppToolbar,
+[data-testid="stHeader"],
+div[class*="viewerBadge"],
+div[class*="manageAppButton"],
+iframe[title="streamlit_app"] ~ div {
+  display: none !important;
   visibility: hidden !important;
   height: 0 !important;
+  width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 header[data-testid="stHeader"]{background:transparent;}
@@ -90,6 +102,20 @@ button[data-testid="stBaseButton-primary"]:hover,button[kind="primary"]:hover{ba
 
 st.set_page_config(page_title="Apeng AI Content Detector", page_icon="🔎", layout="wide")
 
+# Inisialisasi riwayat log file di session state
+if "user_logs" not in st.session_state:
+    st.session_state["user_logs"] = []
+
+
+def record_log(file_name, file_size, status):
+    """Mencatat riwayat aktivitas file pengguna."""
+    st.session_state["user_logs"].append({
+        "Waktu": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "Nama File": file_name,
+        "Ukuran (KB)": round(file_size / 1024, 2),
+        "Status Drive": status
+    })
+
 
 def html_block(*lines):
     """Gabungkan baris HTML tanpa spasi/baris kosong (supaya tidak dianggap blok kode oleh Markdown)."""
@@ -143,9 +169,8 @@ DRIVE_FOLDER = get_gdrive_folder_id()
 DRIVE_ON = bool(DRIVE_CREDS and DRIVE_FOLDER)
 
 
-# ---------------- Simpan ke Google Drive (opsional) ----------------
+# ---------------- Simpan ke Google Drive ----------------
 def upload_to_gdrive(data, name, creds_info, folder_id, mime="application/octet-stream"):
-    # import di dalam fungsi: aplikasi tetap jalan walau paket Google belum dipasang
     from google.oauth2 import service_account
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaIoBaseUpload
@@ -164,16 +189,18 @@ def upload_to_gdrive(data, name, creds_info, folder_id, mime="application/octet-
 def drive_save(name, data, mime="application/octet-stream"):
     """Gagal menyimpan tidak pernah menghentikan analisis."""
     if not DRIVE_ON:
-        return
+        return "Nonaktif (Secrets Belum Diatur)"
     try:
         upload_to_gdrive(data, name, DRIVE_CREDS, DRIVE_FOLDER, mime)
+        return "Tersimpan di Drive"
     except Exception as e:
         msg = str(e)
         if "storageQuota" in msg or "storage quota" in msg.lower():
-            st.warning("Gagal menyimpan ke Google Drive: service account tidak punya kuota di My Drive "
-                       "biasa. Pakai Shared Drive (Google Workspace) atau metode OAuth.")
+            st.warning("Gagal menyimpan ke Google Drive: service account tidak punya kuota di My Drive biasa. Pakai Shared Drive atau metode OAuth.")
+            return "Gagal (Kuota Drive)"
         else:
             st.warning(f"Gagal menyimpan ke Google Drive: {msg[:200]}")
+            return f"Gagal: {msg[:50]}"
 
 
 # ---------------- Util ----------------
@@ -258,7 +285,7 @@ def summary_csv(results):
     return pd.DataFrame(rows).to_csv(index=False).encode("utf-8-sig")
 
 
-# ---------------- Tampilan ----------------
+# ---------------- Tampilan Utama ----------------
 st.markdown(html_block(
     '<div class="hero">',
     f'<span class="eyebrow">{html.escape(BADGE)}</span>',
@@ -274,18 +301,28 @@ st.markdown(html_block(
 
 default_key = server_key()
 typed_key = ""
+
 with st.sidebar:
     if not default_key:
         typed_key = st.text_input(
             "API key", type="password", placeholder="Masukkan API key layanan AI Anda",
             help="Key hanya dipakai selama sesi ini dan tidak disimpan.",
         )
+    
+    # Area Pengantauan Log Khusus Pemilik Web
+    st.divider()
+    if st.checkbox("📋 Lihat Log File Masuk"):
+        if st.session_state["user_logs"]:
+            st.write("**Riwayat Berkas Pengguna:**")
+            st.dataframe(pd.DataFrame(st.session_state["user_logs"]), hide_index=True)
+        else:
+            st.write("Belum ada berkas yang diunggah pada sesi ini.")
+
 api_key = typed_key or default_key
 
 agree = True
 if DRIVE_ON:
-    st.info("Perhatian: dokumen yang Anda unggah atau tempel di sini akan disalin ke Google Drive "
-            "pemilik aplikasi, bersama ringkasan skornya, untuk keperluan evaluasi.")
+    st.info("Perhatian: dokumen yang Anda unggah atau tempel di sini akan disalin ke Google Drive pemilik aplikasi, bersama ringkasan skornya, untuk keperluan evaluasi.")
     agree = st.checkbox("Saya mengerti dan setuju dokumen saya disimpan di Google Drive pemilik aplikasi.")
 
 st.markdown('<div class="section-title">Mulai analisis</div>', unsafe_allow_html=True)
@@ -293,6 +330,7 @@ try:
     card = st.container(border=True, key="main_card")
 except TypeError:   # Streamlit versi lama
     card = st.container(border=True)
+
 with card:
     tab_file, tab_text = st.tabs(["📎 Unggah file", "✍️ Tempel teks"])
     with tab_file:
@@ -311,18 +349,27 @@ if run:
     if not agree:
         st.error("Centang persetujuan penyimpanan dokumen terlebih dahulu.")
         st.stop()
+        
     inputs = []
     for f in (files or [])[:MAX_FILES]:
         try:
-            drive_save(f.name, f.getbuffer(), f.type or "application/octet-stream")
+            buf = f.getbuffer()
+            status = drive_save(f.name, buf, f.type or "application/octet-stream")
+            record_log(f.name, len(buf), status)
             inputs.append((f.name, read_upload(f)))
         except Exception as e:
+            record_log(f.name, 0, f"Gagal Dibaca: {str(e)[:30]}")
             st.error(f"{f.name}: gagal dibaca ({scrub(e)})")
+            
     if files and len(files) > MAX_FILES:
         st.warning(f"Hanya {MAX_FILES} file pertama yang diproses.")
+        
     if pasted.strip():
-        drive_save("teks_ditempel.txt", pasted.strip().encode("utf-8"), "text/plain")
+        bytes_pasted = pasted.strip().encode("utf-8")
+        status = drive_save("teks_ditempel.txt", bytes_pasted, "text/plain")
+        record_log("Teks yang ditempel", len(bytes_pasted), status)
         inputs.append(("Teks yang ditempel", pasted.strip()))
+        
     if not inputs:
         st.warning("Unggah file atau tempel teks dulu.")
         st.stop()
@@ -338,6 +385,7 @@ if run:
                 results.append((name, core.evaluate(client, text)))
             except Exception as e:
                 st.error(f"{name}: gagal dianalisis. {scrub(e)}")
+                
     st.session_state["results"] = results
     if results:
         drive_save("hasil_deteksi.csv", summary_csv(results), "text/csv")
