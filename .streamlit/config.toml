@@ -7,4 +7,5 @@ textColor = "#1d1d1f"
 font = "sans serif"
 
 [client]
-toolbarMode = "minimal"
+toolbarMode = "minimal" # Atau gunakan "viewer" untuk menyembunyikan tautan repositori
+showErrorDetails = false
