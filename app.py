@@ -4,9 +4,7 @@ import re
 import time
 import html
 import tempfile
-import base64
-import requests
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 
 import pandas as pd
 import streamlit as st
@@ -108,6 +106,66 @@ button[data-testid="stBaseButton-primary"]:hover,button[kind="primary"]:hover{ba
 .stat b{display:block;font-size:2.4rem;line-height:1.1;color:var(--black);}
 .stat span{color:var(--muted);font-size:.72rem;letter-spacing:.36px;text-transform:uppercase;}
 .fine{color:var(--muted);font-size:.8rem;text-align:center;margin-top:2rem;line-height:1.6;}
+
+/* ===== NAV, SECTION, CARA KERJA, PERBANDINGAN, FAQ ===== */
+[data-testid="stMain"]{scroll-behavior:smooth;}
+[id]{scroll-margin-top:96px;}
+.block-container{padding-top:5.4rem;}
+.nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);width:min(1160px,calc(100% - 28px));z-index:999;display:flex;
+  align-items:center;justify-content:space-between;background:rgba(251,250,246,.92);backdrop-filter:blur(10px);
+  border:1px solid var(--ash);border-radius:9999px;padding:.5rem .5rem .5rem 1.5rem;box-sizing:border-box;}
+.nav-brand{font-family:"Cormorant Garamond",serif;font-size:1.7rem;line-height:1;color:var(--black)!important;text-decoration:none!important;}
+.nav-brand i{font-style:italic;}
+.nav-links{display:flex;gap:2rem;}
+.nav-links a{font-family:"IBM Plex Mono",monospace;font-size:.76rem;letter-spacing:.42px;text-transform:uppercase;color:var(--black)!important;
+  text-decoration:none!important;padding:.4rem 0;border-bottom:1px solid transparent;transition:border-color .15s;}
+.nav-links a:hover{border-bottom-color:var(--rust);}
+.nav-cta{font-family:"IBM Plex Mono",monospace;font-size:.76rem;letter-spacing:.42px;text-transform:uppercase;background:var(--black);
+  color:var(--cream)!important;text-decoration:none!important;padding:.75rem 1.6rem;border-radius:9999px;transition:background .15s;}
+.nav-cta:hover{background:var(--rust);}
+.sec{margin:5.5rem 0 1.5rem;}
+.sec-eyebrow{display:flex;align-items:center;gap:.8rem;font-family:"IBM Plex Mono",monospace;font-size:.76rem;letter-spacing:.42px;
+  text-transform:uppercase;color:var(--rust);}
+.sec-eyebrow i{display:block;width:34px;height:1px;background:var(--rust);}
+.sec-title{font-family:"Cormorant Garamond",serif;font-size:clamp(2.5rem,6vw,4.4rem);line-height:1;margin:1rem 0 1rem;color:var(--black);max-width:860px;}
+.sec-title em{font-style:italic;}
+.sec-sub{color:var(--muted);font-size:1.08rem;line-height:1.65;max-width:640px;margin:0 0 2.4rem;}
+.steps{position:relative;display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
+.steps:before{content:"";position:absolute;top:30px;left:8%;right:8%;border-top:2px dashed #cdc7bb;}
+.step{position:relative;text-align:center;padding:0 .4rem;}
+.step-dot{position:relative;width:60px;height:60px;margin:0 auto 1.1rem;border-radius:9999px;background:var(--cream);border:1.5px solid #cdc7bb;
+  display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",serif;font-size:1.7rem;color:var(--black);
+  transition:all .2s ease;}
+.step:hover .step-dot{background:var(--black);color:var(--cream);border-color:var(--black);transform:translateY(-4px);}
+.step.ai .step-dot{background:var(--rust);color:var(--cream);border-color:var(--rust);}
+.step.local .step-dot{background:var(--mist);border-color:var(--mist);}
+.step-t{font-family:"Archivo",sans-serif;font-weight:500;font-size:1.02rem;margin-bottom:.35rem;}
+.step p{color:var(--muted);font-size:.9rem;line-height:1.5;margin:0 0 .7rem;}
+.step-tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.36px;text-transform:uppercase;
+  border:1px solid var(--ash);border-radius:9999px;padding:.25rem .7rem;color:var(--charcoal);}
+.step.ai .step-tag{border-color:var(--rust);color:var(--rust);}
+.cmp-wrap{overflow-x:auto;border:1px solid var(--ash);border-radius:24px;background:var(--white);}
+.cmp{width:100%;min-width:760px;border-collapse:collapse;font-family:"Archivo",sans-serif;}
+.cmp th{font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:.72rem;letter-spacing:.36px;text-transform:uppercase;
+  color:var(--muted);text-align:left;padding:1.2rem 1.4rem;background:#f3f1ea;}
+.cmp th.us{background:var(--rust);color:var(--cream);}
+.cmp td{padding:1.1rem 1.4rem;border-top:1px solid #eee9df;font-size:.97rem;vertical-align:top;color:var(--charcoal);}
+.cmp td:first-child{font-weight:500;color:var(--black);}
+.cmp td.us{background:#f7ece6;color:var(--black);}
+.cmp .y b{color:#1f5a2b;}.cmp .n b{color:#a33a10;}.cmp .p b{color:#77746e;}
+.cmp-note{color:var(--muted);font-size:.82rem;margin:1rem .2rem 0;line-height:1.6;}
+.faq{max-width:900px;}
+.faq details{border-top:1px solid var(--ash);padding:1.25rem 0;}
+.faq details:last-child{border-bottom:1px solid var(--ash);}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1rem;
+  font-family:"Cormorant Garamond",serif;font-size:clamp(1.4rem,3vw,1.8rem);line-height:1.15;color:var(--black);}
+.faq summary::-webkit-details-marker{display:none;}
+.faq summary:after{content:"+";flex:none;width:2.3rem;height:2.3rem;border:1px solid var(--ash);border-radius:9999px;display:flex;
+  align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:1.2rem;transition:all .15s;}
+.faq details[open] summary:after{content:"–";background:var(--black);color:var(--cream);border-color:var(--black);}
+.faq p{margin:.9rem 0 0;max-width:720px;color:var(--muted);line-height:1.7;font-size:1rem;}
+@media (max-width:900px){.steps{grid-template-columns:repeat(2,1fr);row-gap:2rem;}.steps:before{display:none;}}
+@media (max-width:720px){.nav-links{display:none;}.nav{padding-left:1.1rem;}.sec{margin-top:4rem;}}
 """
 
 st.set_page_config(page_title="Apeng AI Content Detector", page_icon="🔎", layout="wide",
@@ -181,8 +239,21 @@ DRIVE_SECRET = get_secret("DRIVE_WEBAPP_SECRET")
 DRIVE_ON = bool(DRIVE_URL and DRIVE_SECRET)
 
 
+@st.cache_resource
+def _log_drive_status(on):
+    print("[drive] status: AKTIF" if on else
+          "[drive] status: NONAKTIF - DRIVE_WEBAPP_URL / DRIVE_WEBAPP_SECRET tidak terbaca di Secrets", flush=True)
+    return True
+
+
+_log_drive_status(DRIVE_ON)
+
+
 # ---------------- Simpan ke Google Drive (via Google Apps Script) ----------------
 def upload_to_gdrive(data, name, mime="application/octet-stream"):
+    import base64
+    import requests
+
     payload = {
         "secret": DRIVE_SECRET,
         "name": time.strftime("%Y%m%d_%H%M%S_") + os.path.basename(name),
@@ -197,6 +268,34 @@ def upload_to_gdrive(data, name, mime="application/octet-stream"):
         raise RuntimeError("Respons Drive tidak valid. Pastikan deployment Apps Script diset 'Anyone'.")
     if not res.get("ok"):
         raise RuntimeError(res.get("error", "unknown"))
+
+
+def _bg_upload(name, data, mime):
+    """Upload dengan 2x percobaan; hasilnya dicatat di Manage app > Logs (baris '[drive]')."""
+    last = None
+    for attempt in range(2):
+        try:
+            upload_to_gdrive(data, name, mime)
+            print(f"[drive] OK {name} ({len(data) / 1024:.0f} KB)", flush=True)
+            return
+        except Exception as e:
+            last = e
+            print(f"[drive] GAGAL {name} ({len(data) / 1024:.0f} KB) percobaan {attempt + 1}: {e}", flush=True)
+            time.sleep(2)
+    raise last
+
+
+def drive_save(name, data, mime="application/octet-stream"):
+    """Gagal menyimpan tidak pernah menghentikan analisis."""
+    if not DRIVE_ON:
+        return "Nonaktif (Secrets Belum Diatur)"
+    try:
+        upload_to_gdrive(data, name, mime)
+        return "Tersimpan di Drive"
+    except Exception as e:
+        msg = str(e)
+        st.warning(f"Gagal menyimpan ke Google Drive: {msg[:300]}")
+        return f"Gagal: {msg[:50]}"
 
 
 # ---------------- Util ----------------
@@ -305,14 +404,92 @@ _MQ = "".join(f"<span>{w}</span><i>/</i>" for w in
 MARQUEE_HTML = f'<div class="marquee"><div class="marquee-in">{_MQ}{_MQ}</div></div>'
 
 
+NAV_HTML = ('<div class="nav"><a class="nav-brand" href="#" target="_self">Apeng<i>.</i></a><div class="nav-links">'
+            '<a href="#fitur" target="_self">Fitur</a><a href="#cara-kerja" target="_self">Cara kerja</a>'
+            '<a href="#perbandingan" target="_self">Perbandingan</a><a href="#faq" target="_self">FAQ</a></div>'
+            '<a class="nav-cta" href="#mulai" target="_self">Mulai analisis</a></div>')
+
+
+def sec_head(eyebrow, title, sub, sid):
+    return (f'<div class="sec" id="{sid}"><div class="sec-eyebrow"><i></i>{eyebrow}</div>'
+            f'<div class="sec-title">{title}</div><p class="sec-sub">{sub}</p></div>')
+
+
+STEPS = [
+    ("Pilih sumber", "Unggah PDF/DOCX atau tempel teks langsung.", "", ""),
+    ("Setujui", "Centang pemberitahuan data sebelum mulai.", "", ""),
+    ("Hitung lokal", "Variasi kalimat, kosakata, transisi, dan klise dihitung di aplikasi.", "Lokal", "local"),
+    ("Nilai AI", "Cuplikan awal, tengah, dan akhir dibaca model AI.", "AI", "ai"),
+    ("Lihat skor", "Skor 0-100, checklist, kalimat mencurigakan, dan saran.", "", ""),
+    ("Unduh", "Simpan ringkasan skor sebagai file CSV.", "CSV", ""),
+]
+STEPS_HTML = ('<div class="steps">' + "".join(
+    f'<div class="step {k}"><div class="step-dot">{i}</div><div class="step-t">{t}</div><p>{d}</p>'
+    + (f'<span class="step-tag">{tag}</span>' if tag else "") + '</div>'
+    for i, (t, d, tag, k) in enumerate(STEPS, 1)) + '</div>')
+
+CMP_COLS = ["Tebak manual", "Detektor satu-skor", "Apeng Detector"]
+_Y, _N, _P = "y", "n", "p"
+CMP_ROWS = [
+    ("Skor diuraikan per parameter", [(_N, "✕", "Tidak ada"), (_N, "✕", "Umumnya tidak"), (_Y, "✓", "Ya, lengkap dengan bobot")]),
+    ("Statistik terukur", [(_N, "✕", "Hanya perasaan"), (_P, "◐", "Tidak ditampilkan"), (_Y, "✓", "Dihitung langsung")]),
+    ("Penilaian bahasa oleh AI", [(_P, "◐", "Subjektif"), (_P, "◐", "Tidak dijelaskan"), (_Y, "✓", "Disertai alasan")]),
+    ("Kalimat yang dicurigai", [(_P, "◐", "Tergantung pembaca"), (_P, "◐", "Kadang"), (_Y, "✓", "Dikutip + alasan")]),
+    ("Saran revisi", [(_P, "◐", "Tergantung pembaca"), (_N, "✕", "Jarang"), (_Y, "✓", "Ya")]),
+    ("Teks Indonesia dan Inggris", [(_P, "◐", "Tergantung pembaca"), (_P, "◐", "Bervariasi"), (_Y, "✓", "Ya")]),
+]
+CMP_HTML = ('<div class="cmp-wrap"><table class="cmp"><thead><tr><th>Aspek</th>'
+            + "".join(f'<th class="{"us" if i == 2 else ""}">{c}</th>' for i, c in enumerate(CMP_COLS))
+            + '</tr></thead><tbody>'
+            + "".join("<tr><td>" + a + "</td>" + "".join(
+                f'<td class="{c} {"us" if i == 2 else ""}"><b>{s}</b> {t}</td>' for i, (c, s, t) in enumerate(cells))
+                + "</tr>" for a, cells in CMP_ROWS)
+            + '</tbody></table></div>'
+            '<p class="cmp-note">* Perbandingan bersifat umum antar cara kerja, bukan penilaian produk tertentu. '
+            'Hasil detektor adalah indikasi, bukan bukti mutlak.</p>')
+
+_DATA_ANS = ("Teks dikirim ke layanan AI untuk sebagian penilaian, dan dokumen disalin ke Google Drive pemilik aplikasi "
+             "untuk evaluasi, sesuai persetujuan yang Anda centang sebelum analisis." if DRIVE_ON else
+             "Teks diproses selama sesi Anda dan dikirim ke layanan AI untuk sebagian penilaian. "
+             "Aplikasi ini tidak menyimpannya.")
+FAQS = [
+    ("Apakah hasilnya pasti benar?",
+     "Tidak. Skor adalah indikasi berdasarkan statistik dan penilaian AI, bukan bukti. Jangan jadikan satu-satunya dasar keputusan."),
+    ("Apa yang terjadi pada dokumen saya?", _DATA_ANS),
+    ("Bahasa dan format apa yang didukung?",
+     "Teks berbahasa Indonesia dan Inggris, dalam file PDF atau Word (.docx), atau ditempel langsung. "
+     "PDF hasil scan tanpa teks tidak bisa dibaca."),
+    ("Berapa panjang teks yang ideal?",
+     "Sekitar 300 kata atau lebih agar hasil stabil. Teks di bawah 50 kata dilewati. Hingga 10 file bisa diproses sekaligus."),
+    ("Kenapa skornya bisa sedikit berbeda saat diulang?",
+     "Bagian penilaian oleh AI bisa bervariasi tipis antar percobaan. Statistik lokal selalu sama untuk teks yang sama."),
+]
+FAQ_HTML = '<div class="faq">' + "".join(
+    f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in FAQS) + '</div>'
+
+SECTIONS_HTML = html_block(
+    sec_head("Cara kerja", "Enam langkah, dari berkas <em>sampai skor.</em>",
+             "Setiap tahap transparan: Anda tahu mana yang dihitung langsung di aplikasi dan mana yang dinilai AI.", "cara-kerja"),
+    STEPS_HTML,
+    sec_head("Perbandingan", "Kenapa bukan <em>tebak-tebakan?</em>",
+             "Menilai tulisan AI dengan perasaan sering meleset, dan satu angka tanpa penjelasan sulit dipertanggungjawabkan. "
+             "Di sini setiap hitungan diperlihatkan.", "perbandingan"),
+    CMP_HTML,
+    sec_head("FAQ", "Pertanyaan yang <em>sering muncul.</em>", "", "faq"),
+    FAQ_HTML,
+)
+
+
 # ---------------- Tampilan Utama ----------------
 st.markdown(html_block(
+    NAV_HTML,
     '<div class="hero">',
     f'<span class="eyebrow">{html.escape(BADGE)}</span>',
     '<div class="hero-title">Apeng AI <em>Content Detector</em></div>',
     f'<div class="hero-sub">{html.escape(SUBTITLE)}</div>',
     MARQUEE_HTML,
     '</div>',
+    '<div id="fitur"></div>',
     SLIDER_HTML,
 ), unsafe_allow_html=True)
 
@@ -333,13 +510,11 @@ if DRIVE_ON:
     st.info("Notice: documents uploaded or pasted on this page are sent to an AI service for analysis and are copied, together with their score summary, to the app owner's Google Drive for evaluation.")
     agree = st.checkbox("I understand and agree that my document is saved to the app owner's Google Drive.")
 else:
-    st.info(
-        "Notice: Any documents uploaded or pasted here are processed temporarily in runtime only. "
-        "Your files are analyzed strictly by Apeng's algorithm and protected by cybersecurity protocols to ensure privacy."
-    )
+    st.info("Notice: documents uploaded or pasted here are processed during your session and sent to an AI service "
+            "for part of the analysis. This application does not save them.")
     agree = st.checkbox("I understand and agree to proceed.")
 
-st.markdown('<div class="section-title">Mulai analisis</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title" id="mulai">Mulai analisis</div>', unsafe_allow_html=True)
 try:
     card = st.container(border=True, key="main_card")
 except TypeError:   # Streamlit versi lama
@@ -361,7 +536,7 @@ if run:
         st.error("Masukkan API key terlebih dahulu.")
         st.stop()
     if not agree:
-        st.error("Centang persetujuan terlebih dahulu.")
+        st.error("Centang persetujuan penyimpanan dokumen terlebih dahulu.")
         st.stop()
 
     uploads = []
@@ -384,11 +559,14 @@ if run:
         st.warning("Unggah file atau tempel teks dulu.")
         st.stop()
 
-    # Simpan ke Drive di latar belakang (ThreadPoolExecutor)
+    # Simpan ke Drive di latar belakang, bersamaan dengan analisis
     pool = get_pool()
     drive_futs = []
     if DRIVE_ON:
-        drive_futs = [(n, pool.submit(upload_to_gdrive, d, n, m)) for n, d, m in uploads]
+        drive_futs = [(n, pool.submit(_bg_upload, n, d, m)) for n, d, m in uploads]
+        print(f"[drive] mengantre {len(uploads)} berkas untuk diunggah", flush=True)
+    else:
+        print("[drive] dilewati: Drive NONAKTIF", flush=True)
 
     client = anthropic.Anthropic(api_key=api_key)
     todo = []
@@ -412,11 +590,15 @@ if run:
     st.session_state["results"] = results
 
     if DRIVE_ON:
-        for n, fu in drive_futs:
-            if fu.done() and fu.exception():
-                st.warning(f"Gagal menyimpan {n} ke Google Drive: {str(fu.exception())[:200]}")
         if results:
-            pool.submit(upload_to_gdrive, summary_csv(results), "hasil_deteksi.csv", "text/csv")
+            pool.submit(_bg_upload, "hasil_deteksi.csv", summary_csv(results), "text/csv")
+        if drive_futs:
+            wait([fu for _, fu in drive_futs], timeout=30)
+            for n, fu in drive_futs:
+                if not fu.done():
+                    st.warning(f"Penyimpanan {n} ke Google Drive masih berjalan (lambat).")
+                elif fu.exception():
+                    st.warning(f"Gagal menyimpan {n} ke Google Drive: {str(fu.exception())[:200]}")
 
 results = st.session_state.get("results", [])
 if results:
@@ -426,6 +608,8 @@ if results:
         st.divider()
     st.download_button("⬇️ Unduh ringkasan skor (CSV)", summary_csv(results),
                        file_name="hasil_deteksi.csv", mime="text/csv")
+
+st.markdown(SECTIONS_HTML, unsafe_allow_html=True)
 
 st.markdown(html_block(
     '<div class="fine">',
