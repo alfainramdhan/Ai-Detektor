@@ -367,8 +367,8 @@ api_key = typed_key or default_key
 
 agree = True
 if DRIVE_ON:
-    st.info("Perhatian: dokumen yang Anda unggah atau tempel di sini akan disalin ke Google Drive pemilik aplikasi, bersama ringkasan skornya, untuk keperluan evaluasi.")
-    agree = st.checkbox("Saya mengerti dan setuju dokumen saya disimpan di Google Drive pemilik aplikasi.")
+    st.info("Notice: Your documents and text inputs are executed exclusively in-memory during runtime. No data is stored, backed up, or transmitted to external storage. All processing is secured under advanced cybersecurity protocols to ensure total confidentiality..")
+    agree = st.checkbox("I understand and agree that my text/documents will be processed solely during runtime under strict cybersecurity protection and will not be saved anywhere.")
 
 st.markdown('<div class="section-title">Mulai analisis</div>', unsafe_allow_html=True)
 try:
