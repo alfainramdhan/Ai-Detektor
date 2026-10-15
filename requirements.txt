@@ -1,6 +1,6 @@
-   streamlit
-   anthropic
-   pypdf
-   python-docx
-   pandas
-   request
+streamlit
+anthropic
+pandas
+requests
+pypdf
+python-docx
