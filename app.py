@@ -289,13 +289,13 @@ def summary_csv(results):
 SLIDES = [
     ("01", "Statistik lokal", "Dihitung langsung",
      "Variasi kalimat, kosakata, transisi, dan pola klise diukur langsung dari teks Anda.",
-     ["Burstiness", "Kosakata (MTLD)", "Transisi", "Frasa klise", "Trigram"], "rust", "black"),
+     ["ChatGPT", "Claude", "DeepSeek", "Gemini", "Copilot"], "rust", "black"),
     ("02", "Penilaian AI", "Paham bahasa",
      "Aspek yang butuh pemahaman bahasa dinilai oleh model AI.",
-     ["Perplexity", "Struktur dokumen", "Detail personal", "Ejaan"], "black", "rust"),
+     ["Grok", "Llama", "Mistral", "Qwen"], "black", "rust"),
     ("03", "Transparan", "Tanpa kotak hitam",
      "Setiap parameter, skor, dan bobotnya bisa dilihat.",
-     ["Skor 0-100", "Bobot", "Kontribusi", "Checklist Ya/Tidak"], "rust", "mist"),
+     ["Kimi", "Perplexity", "Meta AI", "Dan lainnya"], "rust", "mist"),
 ]
 
 
@@ -315,7 +315,7 @@ SLIDER_HTML = ('<div class="slider"><div class="track">'
                + '</div><div class="dots"><i></i><i></i><i></i></div></div>')
 
 _MQ = "".join(f"<span>{w}</span><i>/</i>" for w in
-              ["Burstiness", "Perplexity", "MTLD", "Transisi", "Frasa klise", "Trigram", "Detail personal"])
+              ["ChatGPT", "Claude", "DeepSeek", "Gemini", "Copilot", "Grok", "Llama", "Mistral", "Qwen"])
 MARQUEE_HTML = f'<div class="marquee"><div class="marquee-in">{_MQ}{_MQ}</div></div>'
 
 
@@ -344,8 +344,8 @@ api_key = typed_key or default_key
 
 agree = True
 if DRIVE_ON:
-    st.info("Perhatian: dokumen yang Anda unggah atau tempel di sini akan disalin ke Google Drive pemilik aplikasi, bersama ringkasan skornya, untuk keperluan evaluasi.")
-    agree = st.checkbox("Saya mengerti dan setuju dokumen saya disimpan di Google Drive pemilik aplikasi.")
+    st.info("Notice: documents uploaded or pasted on this page are sent to an AI service for analysis and are copied, together with their score summary, to the app owner's Google Drive for evaluation.")
+    agree = st.checkbox("I understand and agree that my document is saved to the app owner's Google Drive.")
 
 st.markdown('<div class="section-title">Mulai analisis</div>', unsafe_allow_html=True)
 try:
@@ -438,6 +438,6 @@ if results:
 st.markdown(html_block(
     '<div class="fine">',
     (html.escape(core.DISCLAIMER) + "<br>") if results else "",
-    'Dokumen yang diunggah hanya digunakan untuk analisis dan evaluasi aplikasi ini.',
+    'Uploaded documents are used only to analyze and evaluate this application, and are never published.',
     '</div>',
 ), unsafe_allow_html=True)
