@@ -461,6 +461,6 @@ if results:
 st.markdown(html_block(
     '<div class="fine">',
     (html.escape(core.DISCLAIMER) + "<br>") if results else "",
-    'Dokumen yang diunggah hanya digunakan untuk analisis dan evaluasi aplikasi ini.',
+    'This website is protected by multi-layered cybersecurity protocols to ensure all files remain strictly confidential, fully encrypted, and completely safe from unauthorized distribution..',
     '</div>',
 ), unsafe_allow_html=True)
