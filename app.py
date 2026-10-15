@@ -299,7 +299,7 @@ api_key = typed_key or default_key
 # Pemberitahuan Keamanan & Persetujuan
 st.info(
     "Notice: Any documents uploaded or pasted here are processed temporarily in runtime only and are not stored or uploaded anywhere. "
-    "Your files are analyzed strictly by Apeng's algorithm—compiled from comprehensive AI criteria—and are protected by multi-layered cybersecurity protocols to ensure complete privacy."
+    "Your files are analyzed strictly by Apeng's algorithm compiled from comprehensive AI criteria and are protected by multi layered cybersecurity protocols to ensure complete privacy."
 )
 agree = st.checkbox("I understand and agree to proceed.")
 
