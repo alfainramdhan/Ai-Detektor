@@ -20,105 +20,93 @@ SUBTITLE = ("Periksa apakah sebuah tulisan kemungkinan dibuat AI. "
 
 CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-:root{--ink:#1d1d1f;--muted:#6e6e73;--line:#e8e8ed;--blue:#0071e3;}
+:root{--ink:#ffffff;--muted:#a7a9ac;--line:#414042;--panel:#191919;--bg:#0e0e0e;--violet:#7084ff;--blue:#405bff;--cyan:#3dd6f5;}
+.stApp{background:var(--bg);color:var(--ink);}
 .stApp h1,.stApp h2,.stApp h3,.stApp h4,.stApp p,.stApp li,.stApp label,.stApp button,
-.stApp input,.stApp textarea,[data-testid="stCaptionContainer"],.hero,.score-card,.stat,.feat,
-.section-title,.file-title,.fine{
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+.stApp input,.stApp textarea,[data-testid="stCaptionContainer"],.hero,.score-card,.stat,.slider,
+.section-title,.file-title,.fine{font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
 
-/* Sembunyikan Sidebar, Toolbar Atas, Menu, Footer, dan Tombol Manage App */
-[data-testid="stSidebar"],
-[data-testid="collapsedControl"],
-[data-testid="stSidebarCollapsedControl"],
-#MainMenu,
-footer,
-[data-testid="stDecoration"],
-[data-testid="stAppToolbar"],
-.stAppToolbar,
-[data-testid="stHeader"],
-div[class*="viewerBadge"],
-div[class*="manageAppButton"],
-iframe[title="streamlit_app"] ~ div {
-  display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  width: 0 !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-header[data-testid="stHeader"]{background:transparent;}
-.block-container{max-width:980px;padding-top:2rem;padding-bottom:5rem;}
+/* Sembunyikan Sidebar, Toolbar, Menu, Footer, dan Manage App */
+[data-testid="stSidebar"],[data-testid="collapsedControl"],[data-testid="stSidebarCollapsedControl"],
+#MainMenu,footer,[data-testid="stDecoration"],[data-testid="stAppToolbar"],.stAppToolbar,
+[data-testid="stHeader"],div[class*="viewerBadge"],div[class*="manageAppButton"],
+iframe[title="streamlit_app"] ~ div{display:none!important;visibility:hidden!important;height:0!important;
+  width:0!important;opacity:0!important;pointer-events:none!important;}
+.block-container{max-width:1100px;padding-top:2rem;padding-bottom:5rem;}
 
 /* ---- hero ---- */
-.hero{text-align:center;padding:2.2rem 0 1rem;}
-.eyebrow{display:inline-block;background:#eaf3ff;color:var(--blue);font-weight:600;font-size:.82rem;
-  padding:.38rem .95rem;border-radius:999px;letter-spacing:.01em;}
-.hero-title{font-size:clamp(2.5rem,6.5vw,4.2rem);font-weight:700;letter-spacing:-.035em;line-height:1.04;
-  margin:1.1rem 0 .9rem;color:var(--ink);}
-.hero-title em{font-style:normal;background:linear-gradient(90deg,#0071e3 0%,#7a5cff 55%,#c04bd6 100%);
+.hero{text-align:center;padding:2.4rem 0 .6rem;}
+.eyebrow{display:inline-block;background:rgba(112,132,255,.14);color:var(--violet);font-weight:600;font-size:.82rem;
+  padding:.4rem 1rem;border-radius:30px;border:1px solid rgba(112,132,255,.35);}
+.hero-title{font-size:clamp(2.6rem,8vw,5.4rem);font-weight:700;letter-spacing:-.04em;line-height:1.02;
+  margin:1.2rem 0 1rem;color:var(--ink);}
+.hero-title em{font-style:normal;background:linear-gradient(90deg,#405bff 0%,#7084ff 50%,#3dd6f5 100%);
   -webkit-background-clip:text;background-clip:text;color:transparent;}
-.hero-sub{color:var(--muted);font-size:1.18rem;max-width:660px;margin:0 auto;line-height:1.5;}
-.feats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:2rem 0 2.2rem;}
-.feat{background:#fff;border:1px solid var(--line);border-radius:20px;padding:1.2rem 1.3rem;
-  box-shadow:0 4px 24px rgba(0,0,0,.04);}
-.feat .ico{font-size:1.5rem;}
-.feat b{display:block;margin:.4rem 0 .15rem;font-size:1rem;color:var(--ink);}
-.feat span{color:var(--muted);font-size:.9rem;line-height:1.4;}
-@media (max-width:720px){.feats,.stats{grid-template-columns:1fr;}}
+.hero-sub{color:var(--muted);font-size:1.15rem;max-width:660px;margin:0 auto;line-height:1.55;}
+
+/* ---- slide fitur ---- */
+.slider{position:relative;overflow:hidden;border-radius:30px;background:var(--panel);border:1px solid var(--line);
+  margin:2.2rem 0 2.4rem;box-shadow:rgba(0,0,0,.45) 0 4px 20px;}
+.slider:before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(600px 220px at 85% 0%,rgba(64,91,255,.22),transparent 70%);}
+.track{display:flex;width:400%;animation:slide 18s ease-in-out infinite;}
+.slider:hover .track{animation-play-state:paused;}
+.slide{flex:0 0 25%;box-sizing:border-box;padding:2.3rem 2.6rem 3.4rem;text-align:left;}
+.slide .ico{font-size:2rem;}
+.slide-tag{display:inline-block;margin-left:.7rem;color:var(--cyan);font-size:.8rem;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;}
+.slide-title{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin:.7rem 0 .4rem;color:var(--ink);}
+.slide-desc{color:var(--muted);font-size:1.02rem;line-height:1.55;max-width:620px;margin:0;}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.2rem;}
+.chips span{background:rgba(255,255,255,.05);border:1px solid var(--line);color:#d1d3d4;font-size:.85rem;
+  padding:.35rem .85rem;border-radius:30px;}
+.dots{position:absolute;bottom:1.1rem;left:0;right:0;display:flex;justify-content:center;gap:.5rem;}
+.dots i{display:block;width:8px;height:8px;border-radius:99px;background:var(--line);
+  animation-duration:18s;animation-iteration-count:infinite;}
+.dots i:nth-child(1){animation-name:d1;}.dots i:nth-child(2){animation-name:d2;}.dots i:nth-child(3){animation-name:d3;}
+@keyframes slide{0%,22%{transform:translateX(0)}25%,47%{transform:translateX(-25%)}
+  50%,72%{transform:translateX(-50%)}75%,100%{transform:translateX(-75%)}}
+@keyframes d1{0%,22%{width:28px;background:#7084ff}25%,72%{width:8px;background:#414042}75%,100%{width:28px;background:#7084ff}}
+@keyframes d2{0%,22%{width:8px;background:#414042}25%,47%{width:28px;background:#7084ff}50%,100%{width:8px;background:#414042}}
+@keyframes d3{0%,47%{width:8px;background:#414042}50%,72%{width:28px;background:#7084ff}75%,100%{width:8px;background:#414042}}
+@media (max-width:720px){.slide{padding:1.6rem 1.4rem 3rem;}.slide-title{font-size:1.5rem;}.stats{grid-template-columns:1fr!important;}}
 
 /* ---- kartu & input ---- */
-div[data-testid="stVerticalBlockBorderWrapper"],.st-key-main_card{background:#fff;border:1px solid var(--line)!important;
-  border-radius:24px!important;box-shadow:0 8px 40px rgba(0,0,0,.05);padding:1rem 1.2rem!important;}
-[data-testid="stFileUploaderDropzone"]{background:#fafafc;border:1.5px dashed #c7c7cc;border-radius:18px;padding:1.4rem;}
-[data-testid="stFileUploaderDropzone"]:hover{border-color:var(--blue);background:#f4f9ff;}
-textarea,input{border-radius:12px!important;}
+div[data-testid="stVerticalBlockBorderWrapper"],.st-key-main_card{background:var(--panel);border:1px solid var(--line)!important;
+  border-radius:30px!important;box-shadow:rgba(0,0,0,.45) 0 4px 20px;padding:1rem 1.2rem!important;}
+[data-testid="stFileUploaderDropzone"]{background:#141414;border:1.5px dashed var(--line);border-radius:20px;padding:1.4rem;}
+[data-testid="stFileUploaderDropzone"]:hover{border-color:var(--violet);background:#171a26;}
+textarea,input{border-radius:10px!important;}
 [data-testid="stTabs"] button[role="tab"]{font-weight:600;font-size:.98rem;}
-button[data-testid="stBaseButton-primary"],button[kind="primary"]{background:var(--blue);border:none;color:#fff;
-  border-radius:999px;padding:.65rem 2rem;font-weight:600;font-size:1rem;box-shadow:0 4px 14px rgba(0,113,227,.3);
-  transition:all .15s ease;}
-button[data-testid="stBaseButton-primary"]:hover,button[kind="primary"]:hover{background:#0077ed;transform:translateY(-1px);
-  box-shadow:0 8px 22px rgba(0,113,227,.35);}
-.section-title{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin:.3rem 0 .6rem;color:var(--ink);}
+button[data-testid="stBaseButton-primary"],button[kind="primary"]{
+  background:linear-gradient(179deg,#405bff 1%,#7084ff 123%);border:none;color:#fff;border-radius:30px;
+  padding:.65rem 2.2rem;font-weight:600;font-size:1rem;box-shadow:0 4px 18px rgba(64,91,255,.4);transition:all .15s ease;}
+button[data-testid="stBaseButton-primary"]:hover,button[kind="primary"]:hover{transform:translateY(-1px);
+  box-shadow:0 8px 26px rgba(64,91,255,.55);color:#fff;}
+.section-title{font-size:1.6rem;font-weight:700;letter-spacing:-.02em;margin:.3rem 0 .6rem;color:var(--ink);}
 
 /* ---- hasil ---- */
 .file-title{font-size:1.3rem;font-weight:700;letter-spacing:-.02em;margin:1.4rem 0 .8rem;color:var(--ink);}
-.score-card{background:#fff;border:1px solid var(--line);border-radius:28px;padding:2.2rem 2rem 1.8rem;
-  box-shadow:0 10px 50px rgba(0,0,0,.06);text-align:center;}
+.score-card{background:var(--panel);border:1px solid var(--line);border-radius:30px;padding:2.2rem 2rem 1.8rem;
+  box-shadow:rgba(0,0,0,.45) 0 4px 20px;text-align:center;}
 .score-label{color:var(--muted);font-weight:600;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;}
 .score-num{font-size:5.4rem;font-weight:700;letter-spacing:-.045em;line-height:1;margin:.5rem 0 .9rem;color:var(--ink);}
 .score-num small{font-size:2rem;font-weight:600;color:var(--muted);margin-left:.2rem;letter-spacing:0;}
-.pill{display:inline-block;padding:.45rem 1.1rem;border-radius:999px;font-weight:600;font-size:.95rem;}
-.pill.green{background:#e6f7ec;color:#1a7f37;}.pill.blue{background:#e8f1ff;color:#0058b8;}
-.pill.orange{background:#fff1dc;color:#a85a00;}.pill.red{background:#ffe9e7;color:#c2261b;}
-.bar{height:10px;background:#efeff3;border-radius:999px;margin:1.5rem auto .3rem;max-width:520px;overflow:hidden;}
+.pill{display:inline-block;padding:.45rem 1.1rem;border-radius:30px;font-weight:600;font-size:.95rem;}
+.pill.green{background:rgba(52,199,89,.15);color:#4cd97b;}.pill.blue{background:rgba(112,132,255,.16);color:#8fa0ff;}
+.pill.orange{background:rgba(255,159,10,.16);color:#ffb340;}.pill.red{background:rgba(255,69,58,.16);color:#ff6b61;}
+.bar{height:10px;background:#2c2c2c;border-radius:999px;margin:1.5rem auto .3rem;max-width:520px;overflow:hidden;}
 .bar>div{height:100%;border-radius:999px;}
-.bar .green{background:#34c759;}.bar .blue{background:#0a84ff;}.bar .orange{background:#ff9f0a;}.bar .red{background:#ff453a;}
+.bar .green{background:#34c759;}.bar .blue{background:#7084ff;}.bar .orange{background:#ff9f0a;}.bar .red{background:#ff453a;}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1rem 0 1.2rem;}
-.stat{background:#fff;border:1px solid var(--line);border-radius:20px;padding:1.1rem 1.2rem;text-align:center;
-  box-shadow:0 4px 24px rgba(0,0,0,.04);}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:1.1rem 1.2rem;text-align:center;}
 .stat b{display:block;font-size:1.7rem;letter-spacing:-.02em;color:var(--ink);}
 .stat span{color:var(--muted);font-size:.85rem;}
 .fine{color:var(--muted);font-size:.82rem;text-align:center;margin-top:2rem;line-height:1.5;}
 """
 
 st.set_page_config(page_title="Apeng AI Content Detector", page_icon="🔎", layout="wide",
-                    initial_sidebar_state="collapsed")
-
-
-# Inisialisasi riwayat log file di session state
-if "user_logs" not in st.session_state:
-    st.session_state["user_logs"] = []
-
-
-def record_log(file_name, file_size, status):
-    """Mencatat riwayat aktivitas file pengguna."""
-    st.session_state["user_logs"].append({
-        "Waktu": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "Nama File": file_name,
-        "Ukuran (KB)": round(file_size / 1024, 2),
-        "Status Drive": status
-    })
+                   initial_sidebar_state="collapsed")
 
 
 def html_block(*lines):
@@ -271,6 +259,31 @@ def summary_csv(results):
     return pd.DataFrame(rows).to_csv(index=False).encode("utf-8-sig")
 
 
+SLIDES = [
+    ("📊", "Statistik lokal", "Dihitung langsung",
+     "Variasi kalimat, kosakata, transisi, dan pola klise diukur langsung dari teks Anda.",
+     ["Burstiness", "Kosakata (MTLD)", "Transisi", "Frasa klise", "Trigram"]),
+    ("🧠", "Penilaian AI", "Paham bahasa",
+     "Aspek yang butuh pemahaman bahasa dinilai oleh model AI.",
+     ["Perplexity", "Struktur dokumen", "Detail personal", "Ejaan"]),
+    ("🔍", "Transparan", "Tanpa kotak hitam",
+     "Setiap parameter, skor, dan bobotnya bisa dilihat.",
+     ["Skor 0-100", "Bobot", "Kontribusi", "Checklist Ya/Tidak"]),
+]
+
+
+def slide_html(s):
+    ico, title, tag, desc, chips = s
+    return (f'<div class="slide"><div><span class="ico">{ico}</span><span class="slide-tag">{tag}</span></div>'
+            f'<div class="slide-title">{title}</div><p class="slide-desc">{desc}</p>'
+            '<div class="chips">' + "".join(f'<span>{c}</span>' for c in chips) + '</div></div>')
+
+
+SLIDER_HTML = ('<div class="slider"><div class="track">'
+               + "".join(slide_html(s) for s in SLIDES + SLIDES[:1])
+               + '</div><div class="dots"><i></i><i></i><i></i></div></div>')
+
+
 # ---------------- Tampilan Utama ----------------
 st.markdown(html_block(
     '<div class="hero">',
@@ -278,17 +291,13 @@ st.markdown(html_block(
     '<div class="hero-title">Apeng AI <em>Content Detector</em></div>',
     f'<div class="hero-sub">{html.escape(SUBTITLE)}</div>',
     '</div>',
-    '<div class="feats">',
-    '<div class="feat"><div class="ico">📊</div><b>Statistik lokal</b><span>Variasi kalimat, kosakata, transisi, dan pola klise dihitung langsung.</span></div>',
-    '<div class="feat"><div class="ico">🧠</div><b>Penilaian AI</b><span>Aspek yang butuh pemahaman bahasa dinilai oleh model AI.</span></div>',
-    '<div class="feat"><div class="ico">🔍</div><b>Transparan</b><span>Setiap parameter, skor, dan bobotnya bisa dilihat.</span></div>',
-    '</div>',
+    SLIDER_HTML,
 ), unsafe_allow_html=True)
 
 default_key = server_key()
 typed_key = ""
 
-# Jika API key tidak ada di Secrets, tampilkan kolom input di halaman utama
+# Jika API key tidak ada di Secrets, tampilkan kolom input di halaman utama (bukan sidebar)
 if not default_key:
     typed_key = st.text_input(
         "API key", type="password", placeholder="Masukkan API key layanan AI Anda",
@@ -299,8 +308,8 @@ api_key = typed_key or default_key
 
 agree = True
 if DRIVE_ON:
-    st.info("🔒 Jaminan Privasi & Keamanan: Seluruh berkas dan teks yang Anda analisis diproses secara aman dalam sistem terenkripsi. Dokumen Anda tidak akan disebarluaskan, tidak dapat diakses oleh pihak ketiga, dan kerahasiaannya terjamin 100%.")
-    agree = st.checkbox("Saya menyetujui ketentuan privasi dan pemrosesan dokumen ini.")
+    st.info("Perhatian: dokumen yang Anda unggah atau tempel di sini akan disalin ke Google Drive pemilik aplikasi, bersama ringkasan skornya, untuk keperluan evaluasi.")
+    agree = st.checkbox("Saya mengerti dan setuju dokumen saya disimpan di Google Drive pemilik aplikasi.")
 
 st.markdown('<div class="section-title">Mulai analisis</div>', unsafe_allow_html=True)
 try:
@@ -324,27 +333,22 @@ if run:
         st.error("Masukkan API key terlebih dahulu.")
         st.stop()
     if not agree:
-        st.error("Centang persetujuan ketentuan privasi terlebih dahulu.")
+        st.error("Centang persetujuan penyimpanan dokumen terlebih dahulu.")
         st.stop()
 
     inputs = []
     for f in (files or [])[:MAX_FILES]:
         try:
-            buf = f.getbuffer()
-            status = drive_save(f.name, buf, f.type or "application/octet-stream")
-            record_log(f.name, len(buf), status)
+            drive_save(f.name, f.getbuffer(), f.type or "application/octet-stream")
             inputs.append((f.name, read_upload(f)))
         except Exception as e:
-            record_log(f.name, 0, f"Gagal Dibaca: {str(e)[:30]}")
             st.error(f"{f.name}: gagal dibaca ({scrub(e)})")
 
     if files and len(files) > MAX_FILES:
         st.warning(f"Hanya {MAX_FILES} file pertama yang diproses.")
 
     if pasted.strip():
-        bytes_pasted = pasted.strip().encode("utf-8")
-        status = drive_save("teks_ditempel.txt", bytes_pasted, "text/plain")
-        record_log("Teks yang ditempel", len(bytes_pasted), status)
+        drive_save("teks_ditempel.txt", pasted.strip().encode("utf-8"), "text/plain")
         inputs.append(("Teks yang ditempel", pasted.strip()))
 
     if not inputs:
@@ -379,6 +383,6 @@ if results:
 st.markdown(html_block(
     '<div class="fine">',
     (html.escape(core.DISCLAIMER) + "<br>") if results else "",
-    'This website is protected by multi-layered cybersecurity protocols to ensure all files remain strictly confidential, fully encrypted, and completely safe from unauthorized distribution.',
+    'Dokumen yang diunggah hanya digunakan untuk analisis dan evaluasi aplikasi ini.',
     '</div>',
 ), unsafe_allow_html=True)
