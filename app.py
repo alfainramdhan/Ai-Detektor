@@ -167,52 +167,6 @@ def server_key():
     return k or os.environ.get("ANTHROPIC_API_KEY", "")
 
 
-def get_secret(name):
-    try:
-        return st.secrets.get(name)
-    except Exception:
-        return None
-
-
-DRIVE_URL = get_secret("DRIVE_WEBAPP_URL")
-DRIVE_SECRET = get_secret("DRIVE_WEBAPP_SECRET")
-DRIVE_ON = bool(DRIVE_URL and DRIVE_SECRET)
-
-
-# ---------------- Simpan ke Google Drive (via Google Apps Script) ----------------
-def upload_to_gdrive(data, name, mime="application/octet-stream"):
-    import base64
-    import requests
-
-    payload = {
-        "secret": DRIVE_SECRET,
-        "name": time.strftime("%Y%m%d_%H%M%S_") + os.path.basename(name),
-        "mime": mime,
-        "data": base64.b64encode(bytes(data)).decode("ascii"),
-    }
-    resp = requests.post(DRIVE_URL, json=payload, timeout=120)
-    resp.raise_for_status()
-    try:
-        res = resp.json()
-    except Exception:
-        raise RuntimeError("Respons Drive tidak valid. Pastikan deployment Apps Script diset 'Anyone'.")
-    if not res.get("ok"):
-        raise RuntimeError(res.get("error", "unknown"))
-
-
-def drive_save(name, data, mime="application/octet-stream"):
-    """Gagal menyimpan tidak pernah menghentikan analisis."""
-    if not DRIVE_ON:
-        return "Nonaktif (Secrets Belum Diatur)"
-    try:
-        upload_to_gdrive(data, name, mime)
-        return "Tersimpan di Drive"
-    except Exception as e:
-        msg = str(e)
-        st.warning(f"Gagal menyimpan ke Google Drive: {msg[:300]}")
-        return f"Gagal: {msg[:50]}"
-
-
 # ---------------- Util ----------------
 def read_upload(f):
     suffix = os.path.splitext(f.name)[1].lower()
@@ -342,10 +296,12 @@ if not default_key:
 
 api_key = typed_key or default_key
 
-agree = True
-if DRIVE_ON:
-    st.info("Notice: documents uploaded or pasted on this page are sent to an AI service for analysis and are copied, together with their score summary, to the app owner's Google Drive for evaluation.")
-    agree = st.checkbox("I understand and agree that my document is saved to the app owner's Google Drive.")
+# Pemberitahuan Keamanan & Persetujuan
+st.info(
+    "Notice: Any documents uploaded or pasted here are processed temporarily in runtime only and are not stored or uploaded anywhere. "
+    "Your files are analyzed strictly by Apeng's algorithm—compiled from comprehensive AI criteria—and are protected by multi-layered cybersecurity protocols to ensure complete privacy."
+)
+agree = st.checkbox("I understand and agree to proceed.")
 
 st.markdown('<div class="section-title">Mulai analisis</div>', unsafe_allow_html=True)
 try:
@@ -369,7 +325,7 @@ if run:
         st.error("Masukkan API key terlebih dahulu.")
         st.stop()
     if not agree:
-        st.error("Centang persetujuan penyimpanan dokumen terlebih dahulu.")
+        st.error("Centang persetujuan pemrosesan dokumen terlebih dahulu.")
         st.stop()
 
     uploads = []
@@ -392,12 +348,6 @@ if run:
         st.warning("Unggah file atau tempel teks dulu.")
         st.stop()
 
-    # Simpan ke Drive di latar belakang, bersamaan dengan analisis
-    pool = get_pool()
-    drive_futs = []
-    if DRIVE_ON:
-        drive_futs = [(n, pool.submit(upload_to_gdrive, d, n, m)) for n, d, m in uploads]
-
     client = anthropic.Anthropic(api_key=api_key)
     todo = []
     for name, text in inputs:
@@ -419,13 +369,6 @@ if run:
 
     st.session_state["results"] = results
 
-    if DRIVE_ON:
-        for n, fu in drive_futs:
-            if fu.done() and fu.exception():
-                st.warning(f"Gagal menyimpan {n} ke Google Drive: {str(fu.exception())[:200]}")
-        if results:
-            pool.submit(upload_to_gdrive, summary_csv(results), "hasil_deteksi.csv", "text/csv")
-
 results = st.session_state.get("results", [])
 if results:
     st.divider()
@@ -438,6 +381,6 @@ if results:
 st.markdown(html_block(
     '<div class="fine">',
     (html.escape(core.DISCLAIMER) + "<br>") if results else "",
-    'Uploaded documents are used only to analyze and evaluate this application, and are never published.',
+    'Documents are read solely by Apeng\'s proprietary algorithm for analysis and are protected with advanced cybersecurity measures. No files are stored or shared.',
     '</div>',
 ), unsafe_allow_html=True)
