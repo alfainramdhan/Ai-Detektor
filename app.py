@@ -26,10 +26,13 @@ CSS = """
 .section-title,.file-title,.fine{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
 
-/* Sembunyikan Toolbar Atas, Tombol GitHub, Menu, Footer, dan Tombol Manage App */
-#MainMenu, 
-footer, 
-[data-testid="stDecoration"], 
+/* Sembunyikan Sidebar, Toolbar Atas, Menu, Footer, dan Tombol Manage App */
+[data-testid="stSidebar"],
+[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapsedControl"],
+#MainMenu,
+footer,
+[data-testid="stDecoration"],
 [data-testid="stAppToolbar"],
 .stAppToolbar,
 [data-testid="stHeader"],
@@ -76,7 +79,6 @@ button[data-testid="stBaseButton-primary"],button[kind="primary"]{background:var
   transition:all .15s ease;}
 button[data-testid="stBaseButton-primary"]:hover,button[kind="primary"]:hover{background:#0077ed;transform:translateY(-1px);
   box-shadow:0 8px 22px rgba(0,113,227,.35);}
-[data-testid="stSidebar"]{background:#f5f5f7;border-right:1px solid var(--line);}
 .section-title{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin:.3rem 0 .6rem;color:var(--ink);}
 
 /* ---- hasil ---- */
@@ -100,21 +102,8 @@ button[data-testid="stBaseButton-primary"]:hover,button[kind="primary"]:hover{ba
 .fine{color:var(--muted);font-size:.82rem;text-align:center;margin-top:2rem;line-height:1.5;}
 """
 
-st.set_page_config(page_title="Apeng AI Content Detector", page_icon="🔎", layout="wide")
-
-# Inisialisasi riwayat log file di session state
-if "user_logs" not in st.session_state:
-    st.session_state["user_logs"] = []
-
-
-def record_log(file_name, file_size, status):
-    """Mencatat riwayat aktivitas file pengguna."""
-    st.session_state["user_logs"].append({
-        "Waktu": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "Nama File": file_name,
-        "Ukuran (KB)": round(file_size / 1024, 2),
-        "Status Drive": status
-    })
+st.set_page_config(page_title="Apeng AI Content Detector", page_icon="🔎", layout="wide",
+                   initial_sidebar_state="collapsed")
 
 
 def html_block(*lines):
@@ -150,6 +139,23 @@ def server_key():
     return k or os.environ.get("ANTHROPIC_API_KEY", "")
 
 
+def get_gdrive_folder_id():
+    try:
+        return st.secrets.get("GDRIVE_FOLDER_ID") or st.secrets.get("DRIVE_FOLDER_ID")
+    except Exception:
+        return None
+
+
+def get_drive_oauth():
+    try:
+        d = dict(st.secrets["gdrive_oauth"])
+        if d.get("client_id") and d.get("client_secret") and d.get("refresh_token"):
+            return d
+        return None
+    except Exception:
+        return None
+
+
 def get_gdrive_credentials():
     try:
         return dict(st.secrets["gdrive_service_account"])
@@ -157,29 +163,35 @@ def get_gdrive_credentials():
         return None
 
 
-def get_gdrive_folder_id():
-    try:
-        return st.secrets.get("GDRIVE_FOLDER_ID")
-    except Exception:
-        return None
-
-
-DRIVE_CREDS = get_gdrive_credentials()
 DRIVE_FOLDER = get_gdrive_folder_id()
-DRIVE_ON = bool(DRIVE_CREDS and DRIVE_FOLDER)
+DRIVE_OAUTH = get_drive_oauth()
+DRIVE_CREDS = get_gdrive_credentials()
+DRIVE_ON = bool(DRIVE_FOLDER and (DRIVE_OAUTH or DRIVE_CREDS))
 
 
 # ---------------- Simpan ke Google Drive ----------------
-def upload_to_gdrive(data, name, creds_info, folder_id, mime="application/octet-stream"):
-    from google.oauth2 import service_account
+def upload_to_gdrive(data, name, folder_id, mime="application/octet-stream"):
     from googleapiclient.discovery import build
     from googleapiclient.http import MediaIoBaseUpload
 
-    info = dict(creds_info)
-    if "private_key" in info:
-        info["private_key"] = info["private_key"].replace("\\n", "\n")
-    creds = service_account.Credentials.from_service_account_info(
-        info, scopes=["https://www.googleapis.com/auth/drive"])
+    scopes = ["https://www.googleapis.com/auth/drive"]
+    if DRIVE_OAUTH:
+        from google.oauth2.credentials import Credentials
+        creds = Credentials(
+            None,
+            refresh_token=DRIVE_OAUTH["refresh_token"],
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=DRIVE_OAUTH["client_id"],
+            client_secret=DRIVE_OAUTH["client_secret"],
+            scopes=scopes,
+        )
+    else:
+        from google.oauth2 import service_account
+        info = dict(DRIVE_CREDS)
+        if "private_key" in info:
+            info["private_key"] = info["private_key"].replace("\\n", "\n")
+        creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
+
     svc = build("drive", "v3", credentials=creds, cache_discovery=False)
     meta = {"name": time.strftime("%Y%m%d_%H%M%S_") + os.path.basename(name), "parents": [folder_id]}
     media = MediaIoBaseUpload(io.BytesIO(bytes(data)), mimetype=mime, resumable=False)
@@ -191,16 +203,15 @@ def drive_save(name, data, mime="application/octet-stream"):
     if not DRIVE_ON:
         return "Nonaktif (Secrets Belum Diatur)"
     try:
-        upload_to_gdrive(data, name, DRIVE_CREDS, DRIVE_FOLDER, mime)
+        upload_to_gdrive(data, name, DRIVE_FOLDER, mime)
         return "Tersimpan di Drive"
     except Exception as e:
         msg = str(e)
         if "storageQuota" in msg or "storage quota" in msg.lower():
-            st.warning("Gagal menyimpan ke Google Drive: service account tidak punya kuota di My Drive biasa. Pakai Shared Drive atau metode OAuth.")
+            st.warning("Gagal menyimpan ke Google Drive: service account tidak punya kuota. Gunakan OAuth (gdrive_oauth) di Secrets.")
             return "Gagal (Kuota Drive)"
-        else:
-            st.warning(f"Gagal menyimpan ke Google Drive: {msg[:200]}")
-            return f"Gagal: {msg[:50]}"
+        st.warning(f"Gagal menyimpan ke Google Drive: {msg[:300]}")
+        return f"Gagal: {msg[:50]}"
 
 
 # ---------------- Util ----------------
@@ -214,17 +225,6 @@ def read_upload(f):
     finally:
         if os.path.exists(path):
             os.remove(path)
-
-
-def render_category(total, text):
-    if total <= 25:
-        st.success(text)
-    elif total <= 50:
-        st.info(text)
-    elif total <= 75:
-        st.warning(text)
-    else:
-        st.error(text)
 
 
 def render_result(name, r):
@@ -302,21 +302,12 @@ st.markdown(html_block(
 default_key = server_key()
 typed_key = ""
 
-with st.sidebar:
-    if not default_key:
-        typed_key = st.text_input(
-            "API key", type="password", placeholder="Masukkan API key layanan AI Anda",
-            help="Key hanya dipakai selama sesi ini dan tidak disimpan.",
-        )
-    
-    # Area Pengantauan Log Khusus Pemilik Web
-    st.divider()
-    if st.checkbox("📋 Lihat Log File Masuk"):
-        if st.session_state["user_logs"]:
-            st.write("**Riwayat Berkas Pengguna:**")
-            st.dataframe(pd.DataFrame(st.session_state["user_logs"]), hide_index=True)
-        else:
-            st.write("Belum ada berkas yang diunggah pada sesi ini.")
+# Jika API key tidak ada di Secrets, tampilkan kolom input di halaman utama (bukan sidebar)
+if not default_key:
+    typed_key = st.text_input(
+        "API key", type="password", placeholder="Masukkan API key layanan AI Anda",
+        help="Key hanya dipakai selama sesi ini dan tidak disimpan.",
+    )
 
 api_key = typed_key or default_key
 
@@ -344,32 +335,27 @@ with card:
 
 if run:
     if not api_key:
-        st.error("Masukkan API key di sidebar terlebih dahulu.")
+        st.error("Masukkan API key terlebih dahulu.")
         st.stop()
     if not agree:
         st.error("Centang persetujuan penyimpanan dokumen terlebih dahulu.")
         st.stop()
-        
+
     inputs = []
     for f in (files or [])[:MAX_FILES]:
         try:
-            buf = f.getbuffer()
-            status = drive_save(f.name, buf, f.type or "application/octet-stream")
-            record_log(f.name, len(buf), status)
+            drive_save(f.name, f.getbuffer(), f.type or "application/octet-stream")
             inputs.append((f.name, read_upload(f)))
         except Exception as e:
-            record_log(f.name, 0, f"Gagal Dibaca: {str(e)[:30]}")
             st.error(f"{f.name}: gagal dibaca ({scrub(e)})")
-            
+
     if files and len(files) > MAX_FILES:
         st.warning(f"Hanya {MAX_FILES} file pertama yang diproses.")
-        
+
     if pasted.strip():
-        bytes_pasted = pasted.strip().encode("utf-8")
-        status = drive_save("teks_ditempel.txt", bytes_pasted, "text/plain")
-        record_log("Teks yang ditempel", len(bytes_pasted), status)
+        drive_save("teks_ditempel.txt", pasted.strip().encode("utf-8"), "text/plain")
         inputs.append(("Teks yang ditempel", pasted.strip()))
-        
+
     if not inputs:
         st.warning("Unggah file atau tempel teks dulu.")
         st.stop()
@@ -385,7 +371,7 @@ if run:
                 results.append((name, core.evaluate(client, text)))
             except Exception as e:
                 st.error(f"{name}: gagal dianalisis. {scrub(e)}")
-                
+
     st.session_state["results"] = results
     if results:
         drive_save("hasil_deteksi.csv", summary_csv(results), "text/csv")
@@ -402,6 +388,6 @@ if results:
 st.markdown(html_block(
     '<div class="fine">',
     (html.escape(core.DISCLAIMER) + "<br>") if results else "",
-    'This website is protected by multi-layered cybersecurity protocols to ensure all files remain strictly confidential, fully encrypted, and completely safe from unauthorized distribution.',
+    'Dokumen yang diunggah hanya digunakan untuk analisis dan evaluasi aplikasi ini.',
     '</div>',
 ), unsafe_allow_html=True)
