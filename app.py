@@ -4,6 +4,7 @@ import re
 import time
 import html
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import streamlit as st
@@ -112,6 +113,28 @@ def html_block(*lines):
 
 st.markdown("<style>" + CSS + "</style>", unsafe_allow_html=True)
 
+# --- Percepat: kirim cuplikan (awal + tengah + akhir) ke AI, bukan seluruh teks ---
+core.MAX_CHARS_LLM = 20000
+if not getattr(core.ask_claude, "_fast", False):
+    _orig_ask = core.ask_claude
+
+    def _ask_fast(client, text):
+        n = core.MAX_CHARS_LLM
+        if len(text) > n:
+            k = (n - 4) // 3
+            mid = len(text) // 2
+            text = text[:k] + "\n\n" + text[mid - k // 2: mid - k // 2 + k] + "\n\n" + text[-k:]
+        return _orig_ask(client, text)
+
+    _ask_fast._fast = True
+    core.ask_claude = _ask_fast
+
+
+@st.cache_resource
+def get_pool():
+    return ThreadPoolExecutor(max_workers=3)
+
+
 # Label tabel tanpa nama merek
 core.LABELS.update({
     "perplexity": "Perplexity (estimasi AI)",
@@ -216,6 +239,8 @@ def render_result(name, r):
         '</div>',
     ), unsafe_allow_html=True)
     for n in r["notes"]:
+        n = re.sub(r"Penilaian Claude memakai [\d,]+ karakter pertama dari ([\d,]+)\.",
+                   r"Penilaian AI memakai cuplikan awal, tengah, dan akhir dari \1 karakter.", n)
         st.caption("ℹ️ " + scrub(n))
 
     tab_a, tab_b, tab_c = st.tabs(["A. Skor parameter", "B. Checklist Ya/Tidak", "C. Contoh & saran"])
@@ -332,10 +357,11 @@ if run:
         st.error("Centang persetujuan penyimpanan dokumen terlebih dahulu.")
         st.stop()
 
+    uploads = []
     inputs = []
     for f in (files or [])[:MAX_FILES]:
         try:
-            drive_save(f.name, f.getbuffer(), f.type or "application/octet-stream")
+            uploads.append((f.name, bytes(f.getbuffer()), f.type or "application/octet-stream"))
             inputs.append((f.name, read_upload(f)))
         except Exception as e:
             st.error(f"{f.name}: gagal dibaca ({scrub(e)})")
@@ -344,28 +370,46 @@ if run:
         st.warning(f"Hanya {MAX_FILES} file pertama yang diproses.")
 
     if pasted.strip():
-        drive_save("teks_ditempel.txt", pasted.strip().encode("utf-8"), "text/plain")
+        uploads.append(("teks_ditempel.txt", pasted.strip().encode("utf-8"), "text/plain"))
         inputs.append(("Teks yang ditempel", pasted.strip()))
 
     if not inputs:
         st.warning("Unggah file atau tempel teks dulu.")
         st.stop()
 
+    # Simpan ke Drive di latar belakang, bersamaan dengan analisis
+    pool = get_pool()
+    drive_futs = []
+    if DRIVE_ON:
+        drive_futs = [(n, pool.submit(upload_to_gdrive, d, n, m)) for n, d, m in uploads]
+
     client = anthropic.Anthropic(api_key=api_key)
-    results = []
+    todo = []
     for name, text in inputs:
         if len(core.tokenize(text)) < 50:
             st.warning(f"{name}: teks terlalu pendek atau PDF hasil scan (tanpa teks). Dilewati.")
             continue
-        with st.spinner(f"Menganalisis {name} ..."):
-            try:
-                results.append((name, core.evaluate(client, text)))
-            except Exception as e:
-                st.error(f"{name}: gagal dianalisis. {scrub(e)}")
+        todo.append((name, text))
+
+    results = []
+    if todo:
+        with st.spinner(f"Menganalisis {len(todo)} dokumen ..."):
+            with ThreadPoolExecutor(max_workers=3) as ex:
+                futs = [(n, ex.submit(core.evaluate, client, t)) for n, t in todo]
+                for n, fu in futs:
+                    try:
+                        results.append((n, fu.result()))
+                    except Exception as e:
+                        st.error(f"{n}: gagal dianalisis. {scrub(e)}")
 
     st.session_state["results"] = results
-    if results:
-        drive_save("hasil_deteksi.csv", summary_csv(results), "text/csv")
+
+    if DRIVE_ON:
+        for n, fu in drive_futs:
+            if fu.done() and fu.exception():
+                st.warning(f"Gagal menyimpan {n} ke Google Drive: {str(fu.exception())[:200]}")
+        if results:
+            pool.submit(upload_to_gdrive, summary_csv(results), "hasil_deteksi.csv", "text/csv")
 
 results = st.session_state.get("results", [])
 if results:
