@@ -139,63 +139,37 @@ def server_key():
     return k or os.environ.get("ANTHROPIC_API_KEY", "")
 
 
-def get_gdrive_folder_id():
+def get_secret(name):
     try:
-        return st.secrets.get("GDRIVE_FOLDER_ID") or st.secrets.get("DRIVE_FOLDER_ID")
+        return st.secrets.get(name)
     except Exception:
         return None
 
 
-def get_drive_oauth():
+DRIVE_URL = get_secret("DRIVE_WEBAPP_URL")
+DRIVE_SECRET = get_secret("DRIVE_WEBAPP_SECRET")
+DRIVE_ON = bool(DRIVE_URL and DRIVE_SECRET)
+
+
+# ---------------- Simpan ke Google Drive (via Google Apps Script) ----------------
+def upload_to_gdrive(data, name, mime="application/octet-stream"):
+    import base64
+    import requests
+
+    payload = {
+        "secret": DRIVE_SECRET,
+        "name": time.strftime("%Y%m%d_%H%M%S_") + os.path.basename(name),
+        "mime": mime,
+        "data": base64.b64encode(bytes(data)).decode("ascii"),
+    }
+    resp = requests.post(DRIVE_URL, json=payload, timeout=120)
+    resp.raise_for_status()
     try:
-        d = dict(st.secrets["gdrive_oauth"])
-        if d.get("client_id") and d.get("client_secret") and d.get("refresh_token"):
-            return d
-        return None
+        res = resp.json()
     except Exception:
-        return None
-
-
-def get_gdrive_credentials():
-    try:
-        return dict(st.secrets["gdrive_service_account"])
-    except Exception:
-        return None
-
-
-DRIVE_FOLDER = get_gdrive_folder_id()
-DRIVE_OAUTH = get_drive_oauth()
-DRIVE_CREDS = get_gdrive_credentials()
-DRIVE_ON = bool(DRIVE_FOLDER and (DRIVE_OAUTH or DRIVE_CREDS))
-
-
-# ---------------- Simpan ke Google Drive ----------------
-def upload_to_gdrive(data, name, folder_id, mime="application/octet-stream"):
-    from googleapiclient.discovery import build
-    from googleapiclient.http import MediaIoBaseUpload
-
-    scopes = ["https://www.googleapis.com/auth/drive"]
-    if DRIVE_OAUTH:
-        from google.oauth2.credentials import Credentials
-        creds = Credentials(
-            None,
-            refresh_token=DRIVE_OAUTH["refresh_token"],
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=DRIVE_OAUTH["client_id"],
-            client_secret=DRIVE_OAUTH["client_secret"],
-            scopes=scopes,
-        )
-    else:
-        from google.oauth2 import service_account
-        info = dict(DRIVE_CREDS)
-        if "private_key" in info:
-            info["private_key"] = info["private_key"].replace("\\n", "\n")
-        creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
-
-    svc = build("drive", "v3", credentials=creds, cache_discovery=False)
-    meta = {"name": time.strftime("%Y%m%d_%H%M%S_") + os.path.basename(name), "parents": [folder_id]}
-    media = MediaIoBaseUpload(io.BytesIO(bytes(data)), mimetype=mime, resumable=False)
-    svc.files().create(body=meta, media_body=media, fields="id", supportsAllDrives=True).execute()
+        raise RuntimeError("Respons Drive tidak valid. Pastikan deployment Apps Script diset 'Anyone'.")
+    if not res.get("ok"):
+        raise RuntimeError(res.get("error", "unknown"))
 
 
 def drive_save(name, data, mime="application/octet-stream"):
@@ -203,13 +177,10 @@ def drive_save(name, data, mime="application/octet-stream"):
     if not DRIVE_ON:
         return "Nonaktif (Secrets Belum Diatur)"
     try:
-        upload_to_gdrive(data, name, DRIVE_FOLDER, mime)
+        upload_to_gdrive(data, name, mime)
         return "Tersimpan di Drive"
     except Exception as e:
         msg = str(e)
-        if "storageQuota" in msg or "storage quota" in msg.lower():
-            st.warning("Gagal menyimpan ke Google Drive: service account tidak punya kuota. Gunakan OAuth (gdrive_oauth) di Secrets.")
-            return "Gagal (Kuota Drive)"
         st.warning(f"Gagal menyimpan ke Google Drive: {msg[:300]}")
         return f"Gagal: {msg[:50]}"
 
