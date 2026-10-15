@@ -25,7 +25,13 @@ CSS = """
 .stApp input,.stApp textarea,[data-testid="stCaptionContainer"],.hero,.score-card,.stat,.feat,
 .section-title,.file-title,.fine{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
-#MainMenu,footer,[data-testid="stDecoration"]{visibility:hidden;height:0;}
+
+/* Sembunyikan menu bawaan, footer, hiasan, dan toolbar kanan atas (termasuk tombol GitHub) */
+#MainMenu, footer, [data-testid="stDecoration"], [data-testid="stAppToolbar"] {
+  visibility: hidden !important;
+  height: 0 !important;
+}
+
 header[data-testid="stHeader"]{background:transparent;}
 .block-container{max-width:980px;padding-top:2rem;padding-bottom:5rem;}
 
