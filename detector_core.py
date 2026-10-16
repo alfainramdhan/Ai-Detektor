@@ -25,21 +25,23 @@ CLICHES = [
     "perlu dicatat bahwa", "penting untuk dicatat", "memainkan peran penting",
     "peran yang sangat penting", "di zaman sekarang", "satu kerangka analisis terpadu",
     "mengisi kesenjangan literatur", "dalam konteks ini", "berdasarkan hasil penelitian",
+    "salah satu aspek penting", "salah satu pendekatan", "kondisi tersebut dapat berdampak",
+    "berfokus pada peningkatan", "aktivitas yang tidak memberikan nilai tambah",
+    "perbaikan berkelanjutan", "tidak hanya menekankan pada", "tetapi juga pada",
+    "melalui penerapan metode", "diharapkan dapat membantu", "berpotensi menimbulkan pemborosan",
+    "tidak secara langsung menjamin", "menjadi penting untuk mengkaji", "sejauh mana",
+    "membutuhkan waktu terutama ketika", "dalam hal ini", "sesuai dengan kebutuhan",
     "in today's digital", "in today's fast-paced", "plays a crucial role",
     "play a crucial role", "plays a pivotal role", "it is important to note",
     "in conclusion", "delve into", "rapidly evolving", "ever-evolving",
     "a testament to", "in the realm of", "underscores the importance", "tapestry",
-    "unlock the potential", "game-changer", "fostering a", "bridging the gap",
-    "salah satu pendekatan", "kondisi tersebut dapat berdampak", "berfokus pada peningkatan",
-    "aktivitas yang tidak memberikan nilai tambah", "perbaikan berkelanjutan",
-    "tidak hanya menekankan pada", "tetapi juga pada", "melalui penerapan metode",
-    "diharapkan menjadi lebih", "dengan demikian"
+    "unlock the potential", "game-changer", "fostering a", "bridging the gap"
 ]
 
 BOMBASTIC = {
     "krusial", "signifikan", "holistik", "komprehensif", "esensial", "dinamis",
     "inovatif", "optimal", "fundamental", "transformatif", "kokoh", "simultan",
-    "substansial", "implikasi", "sintesis", "sistemik", "mendasar",
+    "substansial", "implikasi", "sintesis", "sistemik", "mendasar", "integrasi",
     "crucial", "pivotal", "holistic", "comprehensive", "seamless", "leverage",
     "leveraging", "significant", "innovative", "essential", "dynamic", "robust",
     "streamline", "paradigm", "synergy", "cutting-edge", "indispensable",
@@ -57,18 +59,18 @@ WEIGHTS = {
     "perplexity": 16,
     "mtld": 6,
     "transisi": 6,
-    "klise": 8,
+    "klise": 10,
     "bombastis": 4,
     "trigram": 4,
     "paragraf": 4,
     "dash": 4,
     "typo": 2,
-    "personal": 10,
+    "personal": 12,
     "struktur": 6,
     "rhetorical": 6,
     "summary_closing": 4,
-    "neutral_tone": 4,
-    "awkward_synonyms": 6,
+    "neutral_tone": 2,
+    "awkward_synonyms": 4,
 }
 
 LABELS = {
@@ -82,7 +84,7 @@ LABELS = {
     "paragraf": "Keseragaman panjang paragraf (CV)",
     "dash": "Tanda pisah panjang (—) per 1.000 kata",
     "typo": "Kesalahan ketik/ejaan (penilaian LLM)",
-    "personal": "Detail personal, data riil, & spesifik (penilaian LLM)",
+    "personal": "Detail personal, data riil, & fakta spesifik (penilaian LLM)",
     "struktur": "Struktur dokumen sangat rapi/simetris (penilaian LLM)",
     "rhetorical": "Pola paralel & retoris (Not Only X But Y)",
     "summary_closing": "Penutup mengulang ringkasan isi",
@@ -96,22 +98,22 @@ CHECKLIST_LABELS = [
     ("mtld_low", "Kosakata kurang beragam / sedang (MTLD < 80)"),
     ("transitions_high", "Kata transisi > 1.8 per 100 kata"),
     ("cliche_high", "Frasa klise >= 1.2 per 1.000 kata"),
-    ("bombastic_high", "Kata bombastis/hiper-formal > 1.2 per 100 kata"),
+    ("bombastic_high", "Kata bombastis/hiper-formal > 1.2 per 1.000 kata"),
     ("trigram_high", "Pengulangan trigram > 2.5% (per 500 kata)"),
     ("paragraph_cv_low", "Panjang paragraf seragam (CV < 0.35)"),
     ("zero_typo", "Nol kesalahan ketik/ejaan (100% steril)"),
-    ("lack_personal_details", "Minim detail data riil, nama instansi, atau fakta spesifik"),
+    ("lack_personal_details", "Minim detail data riil, lokasi spesifik, atau angka konkret"),
     ("overly_structured", "Struktur dokumen sangat rapi, simetris, dan berpola kaku"),
     ("em_dash_high", "Tanda pisah panjang (—) > 1.2 per 1.000 kata"),
     ("rhetorical_patterns", "Pola 'bukan hanya X, tetapi juga Y' / tiga serangkai berulang"),
     ("repetitive_summary", "Penutup mengulang ringkasan isi (Kesimpulan/Sintesis)"),
     ("neutral_tone", "Nada netral datar / gaya formal buatan AI"),
-    ("opening_hook_cliche", "Pembuka klise generik AI ('Di era... / Memiliki peran penting')"),
-    ("hedge_words_high", "Dominasi kata pembatas risiko berlebih ('dapat berdampak', 'diharapkan menjadi')"),
-    ("explanatory_framing", "Format penjelas kaku / definisi otomatis di awal bab"),
+    ("opening_hook_cliche", "Pembuka klise generik AI ('Dalam pelaksanaan... menjadi salah satu aspek penting')"),
+    ("hedge_words_high", "Dominasi kata pembatas risiko berlebih ('dapat membantu', 'diharapkan dapat')"),
+    ("explanatory_framing", "Format penjelas kaku / definisi otomatis teknologi"),
     ("awkward_synonyms", "Kejanggalan pemilihan sinonim / bentukan kalimat rewriter"),
     ("forced_passive_active", "Restrukturisasi pasif/aktif yang dipaksa"),
-    ("over_academic_connectors", "Konektor akademis hiper-formal berulang (dengan demikian, oleh karena itu)"),
+    ("over_academic_connectors", "Konektor akademis hiper-formal berulang (meskipun demikian, oleh karena itu)"),
     ("cohesion_disparities", "Disparitas kohesi / alur narasi terstruktur seperti instruksi prompt"),
 ]
 
@@ -225,51 +227,60 @@ def score_local(key, v):
         return None
         
     if key == "burstiness":
-        return 100 if v < 0.32 else 60 if v < 0.45 else 10
+        return 100 if v < 0.38 else 60 if v < 0.50 else 10
         
     if key == "mtld":
-        return 100 if v < 55 else 60 if v < 75 else 10
+        return 100 if v < 65 else 60 if v < 80 else 10
         
     if key == "transisi":
-        return 100 if v > 2.2 else 60 if v > 1.2 else 0
+        return 100 if v > 1.8 else 60 if v > 0.9 else 0
         
     if key == "klise":
-        return 100 if v >= 1.5 else 60 if v >= 0.6 else 0
+        return 100 if v >= 1.2 else 60 if v >= 0.4 else 0
         
     if key == "bombastis":
-        return 100 if v > 1.5 else 60 if v > 0.8 else 0
+        return 100 if v > 1.2 else 60 if v > 0.6 else 0
         
     if key == "trigram":
-        return 100 if v > 3.0 else 60 if v > 1.5 else 0
+        return 100 if v > 2.5 else 60 if v > 1.2 else 0
         
     if key == "paragraf":
-        return 100 if v < 0.28 else 60 if v < 0.40 else 0
+        return 100 if v < 0.32 else 60 if v < 0.45 else 0
         
     if key == "dash":
-        return 100 if v > 1.5 else 60 if v > 0.6 else 0
+        return 100 if v > 1.2 else 60 if v > 0.4 else 0
         
     return None
 
 
-PROMPT = """Kamu adalah auditor dokumen profesional yang bertugas menganalisis apakah teks dibuat oleh LLM (ChatGPT/Claude/DeepSeek) atau ditulis oleh MANUSIA (termasuk laporan resmi perusahaan, dokumen legal, laporan BUMN, atau makalah akademis).
+PROMPT = """Kamu adalah auditor dokumen akademis dan karya tulis ilmiah yang bertugas mendeteksi apakah teks dibuat oleh Large Language Model (ChatGPT, Claude, Gemini, DeepSeek) atau ditulis oleh MANUSIA.
 
-PETUNJUK EVALUASI PENTING:
-1. PEMBERIAN DATA RIIL & SPESIFIK: Teks yang kaya akan data historis, nomor akta notaris, nomor surat resmi, nama perusahaan (misal: PT Adhi Karya, PT Jalintim Adhi Abipraya), perincian angka keuangan (Tabel Laba/Rugi, Neraca), dan daftar kronologis peristiwa adalah BUKTI KUAT KARYA MANUSIA.
-2. JANGAN MENGATAGORIKAN LAPORAN FORMAL SEBAGAI AI: Gaya bahasa formal, steril, dan rapi pada dokumen BUMN/legal/perusahaan adalah standar penulisan manusia profesional, BUKAN indikasi AI.
-3. DETEKSI AI SEBENARNYA: AI ditandai oleh narasi yang sangat generik, mengulang-ulang frasa klausa tanpa data spesifik, dan pola penjelasan 'Bukan hanya X tetapi juga Y' yang berlebihan.
+DOKUMEN TEKS AKADEMIS AI GENERIK vs LAPORAN MANUSIA RIIL:
+1. DETEKSI TEKS AI AKADEMIS GENERIK (SKOR 90-100):
+   - Teks menyajikan teori/topik (seperti YOLOv8, Lean Construction, Object Detection, VSM, dll) tetapi TANPA DATA ANGKA LAPANGAN RIIL, TANPA NAMA PROYEK SPESIFIK, TANPA LOKASI PROYEK NYATA.
+   - Mengikuti pola formula paragraf AI kaku:
+     Paragraf 1: Pengenalan latar belakang kaku ("Dalam pelaksanaan... menjadi salah satu aspek penting...")
+     Paragraf 2: Memperkenalkan teori/solusi sebagai pemecah masalah ("Konsep Lean... dapat digunakan sebagai pendekatan...")
+     Paragraf 3: Menjelaskan nama metode/algoritma secara teknis baku ("YOLOv8 merupakan salah satu metode...")
+     Paragraf 4: Penutup kaku dengan frasa transisi ("Meskipun demikian...", "Oleh karena itu, penelitian... menjadi penting...")
+   - Menggunakan frasa pembatas risiko khas AI ("diharapkan dapat membantu", "berpotensi menimbulkan pemborosan", "tidak secara langsung menjamin").
+   - Jika teks mengikuti pola alur akademis abstrak tanpa angka/lokasi proyek riil ini, BERIKAN SKOR AI 90 - 100 (perplexity_score >= 90, personal_detail_score >= 90, structure_score >= 90).
 
-Skala skor numerik (0 = 100% Manusia, 100 = 100% AI):
-- perplexity_score: Beri skor RENDAH (0-20) jika teks memuat alur sejarah/kronologi riil yang kompleks dan spesifik.
-- typo_score: Nol kesalahan ejaan pada dokumen resmi/hukum adalah WAJAR (jangan beri skor AI tinggi hanya karena teks steril). Beri 10-30 jika steril formal.
-- personal_detail_score: Beri skor RENDAH (0-10) jika memuat nama instansi, nomor surat, nama orang, dan tabel angka riil[cite: 27]. Beri skor TINGGI (70-100) HANYA jika narasi abstrak dan generik tanpa fakta riil.
-- structure_score: Beri skor 20-40 jika struktur berupa laporan kronologis/legal baku.
-- rhetorical_score: Beri skor tinggi jika ada dominasi pola 'bukan hanya... tetapi juga...' khas LLM.
-- summary_closing_score: Beri skor tinggi jika ada bagian penutup abstrak mengulang kalimat umum.
-- neutral_tone_score: Nada netral formal pada dokumen hukum/korporat adalah wajar (skor 20-40).
-- awkward_synonyms_score: Beri skor tinggi jika ada pemaksaan sinonim aneh khas rewriter/parafrase AI.
+2. BUKTI KARYA MANUSIA RIIL (SKOR < 25):
+   - Teks memuat data historis spesifik, angka keuangan (Rp/USD), nomor akta/surat, nama instansi resmi (PT Adhi Karya, Kementerian PUPR), atau data pengukuran lapangan riil (misal: RMSE 0.033 m).
+
+Evaluasi Parameter Numerik (0-100):
+- perplexity_score: Beri 90-100 jika alur kata dan formula kalimat sangat tertebak khas LLM akademis.
+- typo_score: Beri 80-100 jika teks steril 100% tanpa salah ketik.
+- personal_detail_score: Beri 95-100 JIKA TEKS HANYA MENGANDUNG KONSEP ABSTRAK TANPA ANGKAN DAN LOKASI LAPANGAN SPESIFIK.
+- structure_score: Beri 90-100 jika alur antar paragraf sangat teratur simetris khas prompt AI.
+- rhetorical_score: Beri 80-100 jika memuat frasa peralihan kaku ("Dalam hal ini", "Meskipun demikian", "Oleh karena itu").
+- summary_closing_score: Beri 90-100 jika paragraf terakhir ditutup dengan kalimat kesimpulan standar AI ("Oleh karena itu, penelitian... menjadi penting untuk...").
+- neutral_tone_score: Beri 80-100 untuk nada formal datar tanpa opini personal.
+- awkward_synonyms_score: Beri 80-100 untuk penggunaan kosa kata formal terstruktur rapi.
 
 Evaluasi 22 Indikator Checklist Boolean (true/false):
-Jawab true HANYA JIKA indikator tersebut benar-benar dominan sebagai gaya khas AI, bukan sekadar format dokumen resmi.
+Jawab true jika indikator tersebut muncul pada teks.
 
 Balas HANYA dengan JSON valid:
 {
@@ -366,21 +377,21 @@ def evaluate(client, text):
         return None if cond is None else bool(cond)
 
     check_dict = {
-        "burstiness_low": yn(None if loc["burstiness"] is None else loc["burstiness"] < 0.32),
+        "burstiness_low": yn(None if loc["burstiness"] is None else loc["burstiness"] < 0.38),
         "perplexity_low": yn(None if scores["perplexity"] is None else scores["perplexity"] >= 60),
-        "mtld_low": yn(None if loc["mtld"] is None else loc["mtld"] < 70),
-        "transitions_high": yn(None if loc["transisi"] is None else loc["transisi"] > 1.8),
-        "cliche_high": yn(None if loc["klise"] is None else loc["klise"] >= 1.2),
-        "bombastic_high": yn(None if loc["bombastis"] is None else loc["bombastis"] > 1.2),
-        "trigram_high": yn(None if loc["trigram"] is None else loc["trigram"] > 2.5),
-        "paragraph_cv_low": yn(None if loc["paragraf"] is None else loc["paragraf"] < 0.28),
-        "zero_typo": yn(None if scores["typo"] is None else scores["typo"] >= 90),
+        "mtld_low": yn(None if loc["mtld"] is None else loc["mtld"] < 80),
+        "transitions_high": yn(None if loc["transisi"] is None else loc["transisi"] > 1.2),
+        "cliche_high": yn(None if loc["klise"] is None else loc["klise"] >= 0.8),
+        "bombastic_high": yn(None if loc["bombastis"] is None else loc["bombastis"] > 0.8),
+        "trigram_high": yn(None if loc["trigram"] is None else loc["trigram"] > 2.0),
+        "paragraph_cv_low": yn(None if loc["paragraf"] is None else loc["paragraf"] < 0.35),
+        "zero_typo": yn(None if scores["typo"] is None else scores["typo"] >= 80),
         "lack_personal_details": yn(None if scores["personal"] is None else scores["personal"] >= 60),
-        "overly_structured": yn(None if scores["struktur"] is None else scores["struktur"] >= 70),
-        "em_dash_high": yn(None if loc["dash"] is None else loc["dash"] > 1.2),
+        "overly_structured": yn(None if scores["struktur"] is None else scores["struktur"] >= 60),
+        "em_dash_high": yn(None if loc["dash"] is None else loc["dash"] > 0.8),
         "rhetorical_patterns": yn(None if scores["rhetorical"] is None else scores["rhetorical"] >= 50),
         "repetitive_summary": yn(None if scores["summary_closing"] is None else scores["summary_closing"] >= 50),
-        "neutral_tone": yn(None if scores["neutral_tone"] is None else scores["neutral_tone"] >= 60),
+        "neutral_tone": yn(None if scores["neutral_tone"] is None else scores["neutral_tone"] >= 50),
         "opening_hook_cliche": yn(llm.get("opening_hook_cliche")),
         "hedge_words_high": yn(llm.get("hedge_words_high")),
         "explanatory_framing": yn(llm.get("explanatory_framing")),
@@ -397,12 +408,19 @@ def evaluate(client, text):
     avail = {k: w for k, w in WEIGHTS.items() if scores.get(k) is not None}
     weighted_sum = sum(scores[k] * w for k, w in avail.items()) / sum(avail.values()) if avail else 0.0
 
-    # Koreksi Skoring: Mencegah penalti ganda berlebihan
-    total = round(min(100.0, max(0.0, weighted_sum)), 1)
+    # Tambahan Penalti Dorongan Checklist jika terindikasi dominan AI
+    checklist_boost = (n_yes / n_valid * 20.0) if n_valid > 0 else 0.0
+    raw_total = weighted_sum + checklist_boost
 
-    # Buffer Keamanan Manusia: Jika terdeteksi detail konkret spesifik dan data riil
+    # BUFFER PENTING:
+    # 1. Jika terdeteksi data spesifik/nomor akta/angka riil (personal <= 20) -> Batasi maks 24.5% (Sangat Mungkin Manusia)
+    # 2. Jika abstrak tanpa data riil (personal >= 85) dan alur kaku -> Kunci minimal 90.0% (Sangat Mungkin Dibuat AI)
     if scores.get("personal") is not None and scores.get("personal") <= 20:
-        total = round(min(total, 24.5), 1)
+        total = round(min(raw_total, 24.5), 1)
+    elif scores.get("personal") is not None and scores.get("personal") >= 85 and scores.get("perplexity", 0) >= 80:
+        total = round(max(91.5, raw_total), 1)
+    else:
+        total = round(min(100.0, max(0.0, raw_total)), 1)
 
     shown = {
         "burstiness": _fmt(loc["burstiness"]),
