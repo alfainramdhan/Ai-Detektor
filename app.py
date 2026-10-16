@@ -553,7 +553,6 @@ st.markdown(
 default_key = server_key()
 typed_key = ""
 
-# Jika API key tidak ada di Secrets, tampilkan kolom input di halaman utama (bukan sidebar)
 if not default_key:
     typed_key = st.text_input(
         "API key",
@@ -573,7 +572,7 @@ agree = st.checkbox("Saya mengerti dan menyetujui pemrosesan dokumen ini secara 
 st.markdown('<div class="section-title" id="mulai">Mulai analisis</div>', unsafe_allow_html=True)
 try:
     card = st.container(border=True, key="main_card")
-except TypeError:  # Streamlit versi lama
+except TypeError:
     card = st.container(border=True)
 
 with card:
