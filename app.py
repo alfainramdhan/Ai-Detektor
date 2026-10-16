@@ -182,7 +182,7 @@ def html_block(*lines):
 
 st.markdown("<style>" + CSS + "</style>", unsafe_allow_html=True)
 
-# --- Percepat: kirim cuplikan (awal + tengah + akhir) ke AI, bukan seluruh teks ---
+# --- Kirim cuplikan ke AI ---
 core.MAX_CHARS_LLM = 12000
 if not getattr(core.ask_claude, "_fast", False):
     _orig_ask = core.ask_claude
@@ -212,7 +212,7 @@ def scrub(text):
     return re.sub(r"(?i)anthropic", "penyedia AI", text)
 
 
-# ---------------- Kunci & pengaturan ----------------
+# ---------------- Kunci & Pengaturan ----------------
 def server_key():
     try:
         k = st.secrets.get("ANTHROPIC_API_KEY")
@@ -502,7 +502,7 @@ FAQS = [
     ),
     (
         "Berapa panjang teks yang ideal?",
-        "Sekitar 300 kata atau lebih agar hasil stabil. Teks di bawah 50 kata dilewati. Hingga 10 file bisa diproses sekaligus.",
+        "Sekitar 200 kata atau lebih agar hasil stabil. Teks di bawah 50 kata dilewati. Hingga 10 file bisa diproses sekaligus.",
     ),
     (
         "Kenapa skornya bisa sedikit berbeda saat diulang?",
@@ -584,9 +584,9 @@ with card:
         )
     with tab_text:
         pasted = st.text_area(
-            "Tempel teks di sini (minimal ±300 kata)",
+            "Tempel teks di sini (minimal ±200 kata)",
             height=220,
-            placeholder="Tempel teks di sini (minimal ±300 kata)...",
+            placeholder="Tempel teks di sini (minimal ±200 kata)...",
             label_visibility="collapsed",
         )
     run = st.button("Analisis", type="primary")
@@ -619,7 +619,6 @@ if run:
         st.warning("Unggah file atau tempel teks dulu.")
         st.stop()
 
-    # Simpan backup terenkripsi secara aman di latar belakang jika diset
     pool = get_pool()
     drive_futs = []
     if DRIVE_ON:
