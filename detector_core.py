@@ -6,7 +6,7 @@ from collections import Counter
 
 MODEL = "claude-haiku-5-5"
 MAX_CHARS_LLM = 30000
-MIN_WORDS = 300
+MIN_WORDS = 200
 
 TRANSITIONS = [
     "selain itu", "oleh karena itu", "dengan demikian", "lebih lanjut", "di sisi lain",
@@ -17,6 +17,8 @@ TRANSITIONS = [
     "consequently", "on the other hand", "however", "nevertheless", "in conclusion",
     "overall", "it is important to note", "for instance", "as a result",
 ]
+
+# Ditambahkan klise kasual khas AI (termasuk yang memicu kelemahan di teks santai)
 CLICHES = [
     "di era digital", "di era modern", "dalam dunia yang terus berkembang",
     "dapat disimpulkan bahwa", "tidak dapat dipungkiri", "seiring dengan perkembangan",
@@ -27,7 +29,11 @@ CLICHES = [
     "in conclusion", "delve into", "rapidly evolving", "ever-evolving",
     "a testament to", "in the realm of", "underscores the importance", "tapestry",
     "unlock the potential", "game-changer", "fostering a",
+    "jujur saja", "bikin kepala mau pecah", "masalah paling klasik",
+    "bukan cuma menampilkan", "bayangkan ada", "tapi jangan salah",
+    "agak berlebihan", "hiasan layar belaka", "efisien banget", "di sinilah peran"
 ]
+
 BOMBASTIC = {
     "krusial", "signifikan", "holistik", "komprehensif", "esensial", "dinamis",
     "inovatif", "optimal", "fundamental", "transformatif", "kokoh",
@@ -97,7 +103,7 @@ CHECKLIST_LABELS = [
     ("rhetorical_patterns", "Pola 'bukan hanya X, tetapi juga Y' / tiga serangkai berulang"),
     ("repetitive_summary", "Penutup mengulang ringkasan isi"),
     ("neutral_tone", "Nada netral datar tanpa opini/emosi tegas"),
-    ("opening_hook_cliche", "Pembuka klise (\"In today's rapidly evolving...\")"),
+    ("opening_hook_cliche", "Pembuka klise (\"In today's rapidly evolving...\" / gaya santai buatan)"),
     ("hedge_words_high", "Dominasi kata pembatas risiko berlebih (appears to, tends to, arguably)"),
     ("explanatory_framing", "Format penjelas kaku/definisi otomatis di awal kalimat"),
     ("awkward_synonyms", "Kejanggalan pemilihan sinonim (QuillBot artifacts)"),
@@ -205,75 +211,67 @@ def compute_local(text):
         "klise": sum(low.count(c) for c in CLICHES) / n * 1000 if n else None,
         "bombastis": sum(c for w, c in wc.items() if w in BOMBASTIC) / n * 100 if n else None,
         "trigram": statistics.mean(tri_vals) if tri_vals else None,
-        "paragraf": cv([len(tokenize(p)) for p in paras]) if len(paras) >= 5 else None,
+        "paragraf": cv([len(tokenize(p)) for p in paras]) if len(paras) >= 3 else None,
         "dash": text.count("—") / n * 1000 if n else None,
     }
 
 
 def score_local(key, v):
     """
-    PERBAIKAN LOGIKA KALIBRASI:
     0 = Mirip Manusia, 100 = Mirip AI.
     """
     if v is None:
         return None
         
-    # BURSTINESS: Semakin KECIL CV (seragam), semakin mirip AI (Skor AI Tinggi)
     if key == "burstiness":
         return 100 if v < 0.35 else 50 if v < 0.55 else 0
         
-    # MTLD: Semakin KECIL MTLD (kosakata miskin/terbatas), semakin mirip AI
     if key == "mtld":
         return 100 if v < 45 else 60 if v < 65 else 0
         
-    # TRANSISI: Semakin BANYAK kata transisi, semakin mirip AI
     if key == "transisi":
-        return 100 if v > 3.0 else 60 if v > 1.8 else 0
+        return 100 if v > 2.5 else 60 if v > 1.2 else 0
         
-    # KLISE: Semakin BANYAK frasa klise, semakin mirip AI
     if key == "klise":
-        return 100 if v >= 3.0 else 60 if v >= 1.0 else 0
+        return 100 if v >= 2.0 else 60 if v >= 0.8 else 0
         
-    # BOMBASTIS: Semakin BANYAK kata hiper-formal, semakin mirip AI
     if key == "bombastis":
-        return 100 if v > 2.0 else 60 if v > 1.0 else 0
+        return 100 if v > 1.8 else 60 if v > 0.8 else 0
         
-    # TRIGRAM: Semakin BANYAK pengulangan 3-kata, semakin mirip AI
     if key == "trigram":
-        return 100 if v > 5.0 else 60 if v > 3.0 else 0
+        return 100 if v > 4.0 else 60 if v > 2.0 else 0
         
-    # PARAGRAF: Semakin KECIL CV (paragraf simetris), semakin mirip AI
     if key == "paragraf":
-        return 100 if v < 0.30 else 60 if v < 0.45 else 0
+        return 100 if v < 0.35 else 60 if v < 0.50 else 0
         
-    # DASH: Semakin BANYAK tanda pisah panjang (—), semakin mirip AI
     if key == "dash":
-        return 100 if v > 3.0 else 60 if v > 1.0 else 0
+        return 100 if v > 2.0 else 60 if v > 0.5 else 0
         
     return None
 
 
 PROMPT = """Kamu adalah auditor dokumen yang menilai apakah sebuah teks kemungkinan ditulis/di-edit oleh AI atau alat rewriter (seperti ChatGPT, Claude, Gemini, QuillBot, SciSpace).
-Teks di bawah bisa berbahasa Indonesia atau Inggris. Nilai HANYA aspek berikut berdasarkan teks itu.
+Teks di bawah bisa berbahasa Indonesia atau Inggris. Perhatikan bahwa AI modern sering diprompt memakai gaya santai, ungkapan informal, atau sudut pandang orang pertama ('saya') untuk mengelak dari deteksi.
+
 Skala semua skor numerik: 0 = sangat mirip tulisan manusia, 100 = sangat mirip tulisan AI.
 
 Evaluasi Parameter Numerik (0-100):
 - perplexity_score: ESTIMASI seberapa mudah ditebak pilihan kata dan alur kalimat (100 = sangat generik/prediktif, 0 = tak terduga/khas manusia).
-- typo_score: 100 jika nol kesalahan ketik/ejaan (100% steril); 60 jika 1-2 per 1.000 kata; 30 jika 3-5; 0 jika lebih dari 5.
-- personal_detail_score: 100 jika tidak ada detail personal/konkret (nama, tanggal, anekdot, pengalaman); 60 jika sedikit; 30 jika cukup; 0 jika banyak.
-- structure_score: 100 jika struktur sangat rapi dan simetris (pembuka-poin-kesimpulan, bullet seragam); 60 rapi; 30 sedang; 0 tidak beraturan.
-- rhetorical_score: 100 jika terdeteksi berulang pola 'bukan hanya X, tetapi juga Y' atau gabungan 3 kata sifat/benda berurutan (rule of three); 0 jika tidak ada.
-- summary_closing_score: 100 jika paragraf penutup mengulang ringkasan isi secara kaku ('In conclusion', 'Overall'); 0 jika alami.
-- neutral_tone_score: 100 jika nada netral datar tanpa emosi/opini tegas (terlalu diplomatik); 0 jika menunjukkan preferensi/emosi manusia.
+- typo_score: 100 jika nol kesalahan ketik/ejaan (100% steril dari typo); 60 jika 1-2 per 1.000 kata; 0 jika banyak typo organik manusia.
+- personal_detail_score: 100 jika cerita/anekdot personal terasa generik/rekaan AI (tanpa nama orang, lokasi spesifik, data riil meskipun memakai kata 'saya'); 0 jika ada fakta/pengalaman empiris asli yang spesifik.
+- structure_score: 100 jika struktur simetris, pola paragraf teratur rapi; 0 jika tidak beraturan.
+- rhetorical_score: 100 jika terdeteksi berulang pola retoris 'bukan hanya X, tetapi juga Y', ungkapan 'tapi jangan salah', atau gabungan 3 poin berurutan.
+- summary_closing_score: 100 jika paragraf penutup mengulang ringkasan isi secara kaku/diplomatis ('In conclusion', 'menurut saya itu agak berlebihan'); 0 jika alami.
+- neutral_tone_score: 100 jika nada terasa buatan (baik kaku maupun 'dibuat-buat santai' tanpa emosi manusia asli); 0 jika menunjukkan emosi/opini manusia asli.
 - awkward_synonyms_score: 100 jika terdeteksi kejanggalan sinonim/parafrase dipaksa khas QuillBot; 0 jika alami.
 
 Evaluasi 22 Indikator Checklist Boolean (true/false):
-- opening_hook_cliche: true jika diawali frasa pembuka klise (seperti "In today's rapidly evolving...", "In the realm of...").
-- hedge_words_high: true jika terdominasi kata kualifikasi berlebih (appears to, tends to, arguably, nuanced, multifaceted).
+- opening_hook_cliche: true jika diawali frasa pembuka klise (seperti "In today's rapidly evolving...", "Jujur saja,...", "Dalam era...").
+- hedge_words_high: true jika terdominasi kata kualifikasi berlebih (appears to, tends to, arguably, menurut saya, agak berlebihan).
 - explanatory_framing: true jika menyajikan format penjelas kaku / definisi otomatis di awal kalimat.
 - forced_passive_active: true jika terjadi restrukturisasi pasif/aktif yang dipaksa atau kaku.
-- over_academic_connectors: true jika menyisipkan konektor akademis hiper-formal (hence, herein, thus) pada gagasan sederhana.
-- cohesion_disparities: true jika alur/kohesi antar-paragraf menurun akibat parafrase per kalimat.
+- over_academic_connectors: true jika menyisipkan konektor akademis hiper-formal atau transisi santai berlebih.
+- cohesion_disparities: true jika alur/kohesi antar-paragraf terasa diprogram.
 
 Serta kutipan dan saran:
 - contoh: 2-3 kutipan PERSIS (maks 25 kata) dari teks yang paling kuat mengindikasikan AI, beserta alasan singkat (bahasa Indonesia). Jika tidak ada, kosongkan.
@@ -369,24 +367,24 @@ def evaluate(client, text):
 
     check_dict = {
         "burstiness_low": yn(None if loc["burstiness"] is None else loc["burstiness"] < 0.35),
-        "perplexity_low": yn(None if scores["perplexity"] is None else scores["perplexity"] >= 70),
+        "perplexity_low": yn(None if scores["perplexity"] is None else scores["perplexity"] >= 60),
         "mtld_low": yn(None if loc["mtld"] is None else loc["mtld"] < 65),
-        "transitions_high": yn(None if loc["transisi"] is None else loc["transisi"] > 2.5),
-        "cliche_high": yn(None if loc["klise"] is None else loc["klise"] >= 3),
-        "bombastic_high": yn(None if loc["bombastis"] is None else loc["bombastis"] > 1.5),
-        "trigram_high": yn(None if loc["trigram"] is None else loc["trigram"] > 4),
+        "transitions_high": yn(None if loc["transisi"] is None else loc["transisi"] > 2.0),
+        "cliche_high": yn(None if loc["klise"] is None else loc["klise"] >= 1.5),
+        "bombastic_high": yn(None if loc["bombastis"] is None else loc["bombastis"] > 1.2),
+        "trigram_high": yn(None if loc["trigram"] is None else loc["trigram"] > 3.5),
         "paragraph_cv_low": yn(None if loc["paragraf"] is None else loc["paragraf"] < 0.35),
-        "zero_typo": yn(None if scores["typo"] is None else scores["typo"] >= 100),
+        "zero_typo": yn(None if scores["typo"] is None else scores["typo"] >= 80),
         "lack_personal_details": yn(None if scores["personal"] is None else scores["personal"] >= 60),
-        "overly_structured": yn(None if scores["struktur"] is None else scores["struktur"] >= 100),
-        "em_dash_high": yn(None if loc["dash"] is None else loc["dash"] > 2),
-        "rhetorical_patterns": yn(None if scores["rhetorical"] is None else scores["rhetorical"] >= 60),
-        "repetitive_summary": yn(None if scores["summary_closing"] is None else scores["summary_closing"] >= 60),
-        "neutral_tone": yn(None if scores["neutral_tone"] is None else scores["neutral_tone"] >= 60),
+        "overly_structured": yn(None if scores["struktur"] is None else scores["struktur"] >= 70),
+        "em_dash_high": yn(None if loc["dash"] is None else loc["dash"] > 1.5),
+        "rhetorical_patterns": yn(None if scores["rhetorical"] is None else scores["rhetorical"] >= 50),
+        "repetitive_summary": yn(None if scores["summary_closing"] is None else scores["summary_closing"] >= 50),
+        "neutral_tone": yn(None if scores["neutral_tone"] is None else scores["neutral_tone"] >= 50),
         "opening_hook_cliche": yn(llm.get("opening_hook_cliche")),
         "hedge_words_high": yn(llm.get("hedge_words_high")),
         "explanatory_framing": yn(llm.get("explanatory_framing")),
-        "awkward_synonyms": yn(None if scores["awkward_synonyms"] is None else scores["awkward_synonyms"] >= 60),
+        "awkward_synonyms": yn(None if scores["awkward_synonyms"] is None else scores["awkward_synonyms"] >= 50),
         "forced_passive_active": yn(llm.get("forced_passive_active")),
         "over_academic_connectors": yn(llm.get("over_academic_connectors")),
         "cohesion_disparities": yn(llm.get("cohesion_disparities")),
@@ -399,7 +397,7 @@ def evaluate(client, text):
     # Rumus Hitung Gabungan (Weighted Sum + Checklist Penalty)
     avail = {k: w for k, w in WEIGHTS.items() if scores.get(k) is not None}
     weighted_sum = sum(scores[k] * w for k, w in avail.items()) / sum(avail.values()) if avail else 0.0
-    checklist_penalty = (n_yes / n_valid * 10.0) if n_valid > 0 else 0.0
+    checklist_penalty = (n_yes / n_valid * 15.0) if n_valid > 0 else 0.0
     total = min(100.0, weighted_sum + checklist_penalty)
 
     shown = {
