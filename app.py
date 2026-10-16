@@ -458,7 +458,7 @@ STEPS_HTML = (
 CMP_COLS = ["Tebak manual", "Detektor satu-skor", "Apeng Detector"]
 _Y, _N, _P = "y", "n", "p"
 CMP_ROWS = [
-    ("Skor diuraikan per parameter", [(_N, "✕", "Tidak ada"), (_N, "✕", "Umumnya tidak"), (_Y, "✓", "Ya, 16 parameter")]),
+    ("Skor diuraikan per parameter", [(_N, "✕", "Tidak ada"), (_N, "✕", "Umumnya tidak"), (_Y, "✓", "Ya, 38 indikator")]),
     ("Statistik terukur", [(_N, "✕", "Hanya perasaan"), (_P, "◐", "Tidak ditampilkan"), (_Y, "✓", "Dihitung langsung")]),
     ("Penilaian bahasa oleh AI", [(_P, "◐", "Subjektif"), (_P, "◐", "Tidak dijelaskan"), (_Y, "✓", "Disertai alasan")]),
     ("Kalimat yang dicurigai", [(_P, "◐", "Tergantung pembaca"), (_P, "◐", "Kadang"), (_Y, "✓", "Dikutip + alasan")]),
@@ -485,8 +485,8 @@ CMP_HTML = (
 )
 
 _DATA_ANS = (
-    "Semua dokumen yang Anda unggah atau tempel dijamin aman, rahasia, dan terenkripsi dengan protokol keamanan siber ketat. "
-    "File hanya digunakan secara terbatas selama proses analisis evaluasi dan tidak akan dibocorkan atau dipublikasikan."
+    "Uploaded or pasted documents will not be leaked, shared, or published. "
+    "Files are processed solely during the analysis evaluation."
 )
 
 FAQS = [
@@ -564,11 +564,12 @@ if not default_key:
 
 api_key = typed_key or default_key
 
-# Notice Keamanan & Kerahasiaan
+# Notice Keamanan & Kerahasiaan (Versi Bahasa Inggris)
 st.info(
-    "Pemberitahuan Keamanan: Semua file yang Anda unggah atau tempel dijamin aman, rahasia, dan sepenuhnya terenkripsi dengan protokol keamanan siber. Dokumen tidak akan dibocorkan atau dipublikasikan."
+    "Privacy Notice: All uploaded or pasted files will not be leaked, shared, or published. "
+    "Files are processed solely for analysis purposes."
 )
-agree = st.checkbox("Saya mengerti dan menyetujui pemrosesan dokumen ini secara aman.")
+agree = st.checkbox("I understand and agree to the processing of this document under these terms.")
 
 st.markdown('<div class="section-title" id="mulai">Mulai analisis</div>', unsafe_allow_html=True)
 try:
@@ -667,7 +668,7 @@ st.markdown(
     html_block(
         '<div class="fine">',
         (html.escape(core.DISCLAIMER) + "<br>") if results else "",
-        "Semua dokumen terenkripsi dan dijaga kerahasiaannya secara ketat. File Anda tidak akan dibocorkan atau dipublikasikan.",
+        "All documents will not be leaked, shared, or published. Your files are processed solely for evaluation purposes.",
         "</div>",
     ),
     unsafe_allow_html=True,
