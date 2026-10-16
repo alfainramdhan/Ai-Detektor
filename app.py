@@ -458,7 +458,7 @@ STEPS_HTML = (
 CMP_COLS = ["Tebak manual", "Detektor satu-skor", "Apeng Detector"]
 _Y, _N, _P = "y", "n", "p"
 CMP_ROWS = [
-    ("Skor diuraikan per parameter", [(_N, "✕", "Tidak ada"), (_N, "✕", "Umumnya tidak"), (_Y, "✓", "Ya, dengan total 32 kriteria beserta parameter")]),
+    ("Skor diuraikan per parameter", [(_N, "✕", "Tidak ada"), (_N, "✕", "Umumnya tidak"), (_Y, "✓", "Ya, 16 parameter")]),
     ("Statistik terukur", [(_N, "✕", "Hanya perasaan"), (_P, "◐", "Tidak ditampilkan"), (_Y, "✓", "Dihitung langsung")]),
     ("Penilaian bahasa oleh AI", [(_P, "◐", "Subjektif"), (_P, "◐", "Tidak dijelaskan"), (_Y, "✓", "Disertai alasan")]),
     ("Kalimat yang dicurigai", [(_P, "◐", "Tergantung pembaca"), (_P, "◐", "Kadang"), (_Y, "✓", "Dikutip + alasan")]),
