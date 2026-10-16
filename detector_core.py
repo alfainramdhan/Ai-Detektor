@@ -5,41 +5,41 @@ import statistics
 from collections import Counter
 
 MODEL = "claude-haiku-5-5"
-MAX_CHARS_LLM = 30000
+MAX_CHARS_LLM = 40000
 MIN_WORDS = 200
 
 TRANSITIONS = [
     "selain itu", "oleh karena itu", "dengan demikian", "lebih lanjut", "di sisi lain",
     "pada akhirnya", "penting untuk dicatat", "namun demikian", "selanjutnya",
     "oleh sebab itu", "meskipun demikian", "dengan kata lain", "secara keseluruhan",
-    "pada dasarnya", "sebagai contoh", "sebagai tambahan",
+    "pada dasarnya", "sebagai contoh", "sebagai tambahan", "berdasarkan hal tersebut",
+    "dalam konteks ini", "dengan kata lain", "sejalan dengan", "hal ini menunjukkan",
     "moreover", "furthermore", "additionally", "in addition", "therefore", "thus",
     "consequently", "on the other hand", "however", "nevertheless", "in conclusion",
-    "overall", "it is important to note", "for instance", "as a result",
+    "overall", "it is important to note", "for instance", "as a result", "in this context",
 ]
 
 CLICHES = [
     "di era digital", "di era modern", "dalam dunia yang terus berkembang",
     "dapat disimpulkan bahwa", "tidak dapat dipungkiri", "seiring dengan perkembangan",
     "perlu dicatat bahwa", "penting untuk dicatat", "memainkan peran penting",
-    "peran yang sangat penting", "di zaman sekarang",
+    "peran yang sangat penting", "di zaman sekarang", "satu kerangka analisis terpadu",
+    "mengisi kesenjangan literatur", "dalam konteks ini", "berdasarkan hasil penelitian",
     "in today's digital", "in today's fast-paced", "plays a crucial role",
     "play a crucial role", "plays a pivotal role", "it is important to note",
     "in conclusion", "delve into", "rapidly evolving", "ever-evolving",
     "a testament to", "in the realm of", "underscores the importance", "tapestry",
-    "unlock the potential", "game-changer", "fostering a",
-    "jujur saja", "bikin kepala mau pecah", "masalah paling klasik",
-    "bukan cuma menampilkan", "bayangkan ada", "tapi jangan salah",
-    "agak berlebihan", "hiasan layar belaka", "efisien banget", "di sinilah peran",
+    "unlock the potential", "game-changer", "fostering a", "bridging the gap",
     "salah satu pendekatan", "kondisi tersebut dapat berdampak", "berfokus pada peningkatan",
-    "aktivitas yang tidak memberikan nilai tambah", "non-value added activities",
-    "perbaikan berkelanjutan", "tidak hanya menekankan pada", "tetapi juga pada",
-    "melalui penerapan metode", "diharapkan menjadi lebih", "dengan demikian"
+    "aktivitas yang tidak memberikan nilai tambah", "perbaikan berkelanjutan",
+    "tidak hanya menekankan pada", "tetapi juga pada", "melalui penerapan metode",
+    "diharapkan menjadi lebih", "dengan demikian"
 ]
 
 BOMBASTIC = {
     "krusial", "signifikan", "holistik", "komprehensif", "esensial", "dinamis",
-    "inovatif", "optimal", "fundamental", "transformatif", "kokoh",
+    "inovatif", "optimal", "fundamental", "transformatif", "kokoh", "simultan",
+    "substansial", "implikasi", "sintesis", "sistemik", "mendasar",
     "crucial", "pivotal", "holistic", "comprehensive", "seamless", "leverage",
     "leveraging", "significant", "innovative", "essential", "dynamic", "robust",
     "streamline", "paradigm", "synergy", "cutting-edge", "indispensable",
@@ -53,8 +53,8 @@ TRANS_RE = re.compile(
 
 # 16 Parameter & Bobot
 WEIGHTS = {
-    "burstiness": 12,
-    "perplexity": 12,
+    "burstiness": 10,
+    "perplexity": 14,
     "mtld": 4,
     "transisi": 8,
     "klise": 10,
@@ -62,13 +62,13 @@ WEIGHTS = {
     "trigram": 4,
     "paragraf": 4,
     "dash": 4,
-    "typo": 3,
-    "personal": 5,
-    "struktur": 5,
-    "rhetorical": 5,
+    "typo": 2,
+    "personal": 6,
+    "struktur": 6,
+    "rhetorical": 6,
     "summary_closing": 4,
-    "neutral_tone": 4,
-    "awkward_synonyms": 5,
+    "neutral_tone": 6,
+    "awkward_synonyms": 6,
 }
 
 LABELS = {
@@ -87,32 +87,32 @@ LABELS = {
     "rhetorical": "Pola paralel & retoris (Not Only X But Y)",
     "summary_closing": "Penutup mengulang ringkasan isi",
     "neutral_tone": "Nada netral datar / diplomatik",
-    "awkward_synonyms": "Sinonim kaku / parafrase dipaksa (QuillBot)",
+    "awkward_synonyms": "Sinonim kaku / parafrase dipaksa",
 }
 
 CHECKLIST_LABELS = [
     ("burstiness_low", "Panjang kalimat seragam (CV < 0.38)"),
-    ("perplexity_low", "Perplexity rendah (alur kata sangat tertebak)"),
+    ("perplexity_low", "Perplexity rendah (alur kata sangat tertebak khas LLM)"),
     ("mtld_low", "Kosakata kurang beragam / sedang (MTLD < 80)"),
-    ("transitions_high", "Kata transisi > 1.5 per 100 kata"),
-    ("cliche_high", "Frasa klise >= 1.0 per 1.000 kata"),
-    ("bombastic_high", "Kata bombastis/hiper-formal > 1.0 per 100 kata"),
+    ("transitions_high", "Kata transisi > 1.2 per 100 kata"),
+    ("cliche_high", "Frasa klise >= 0.8 per 1.000 kata"),
+    ("bombastic_high", "Kata bombastis/hiper-formal > 0.8 per 100 kata"),
     ("trigram_high", "Pengulangan trigram > 2.0% (per 500 kata)"),
     ("paragraph_cv_low", "Panjang paragraf seragam (CV < 0.35)"),
     ("zero_typo", "Nol kesalahan ketik/ejaan (100% steril)"),
-    ("lack_personal_details", "Minim detail personal, pengalaman, dan contoh konkret"),
-    ("overly_structured", "Struktur dokumen sangat rapi/simetris"),
-    ("em_dash_high", "Tanda pisah panjang (—) > 1.0 per 1.000 kata"),
+    ("lack_personal_details", "Minim detail pengalaman autentik/lapangan non-generik"),
+    ("overly_structured", "Struktur dokumen sangat rapi, simetris, dan berpola kaku"),
+    ("em_dash_high", "Tanda pisah panjang (—) > 0.8 per 1.000 kata"),
     ("rhetorical_patterns", "Pola 'bukan hanya X, tetapi juga Y' / tiga serangkai berulang"),
-    ("repetitive_summary", "Penutup mengulang ringkasan isi"),
-    ("neutral_tone", "Nada netral datar / gaya formal buatan"),
-    ("opening_hook_cliche", "Pembuka klise (\"Industri ... memiliki tantangan yang cukup kompleks...\")"),
-    ("hedge_words_high", "Dominasi kata pembatas risiko berlebih (dapat berdampak, diharapkan menjadi)"),
-    ("explanatory_framing", "Format penjelas kaku/definisi otomatis di awal kalimat"),
-    ("awkward_synonyms", "Kejanggalan pemilihan sinonim (QuillBot artifacts)"),
+    ("repetitive_summary", "Penutup mengulang ringkasan isi (Kesimpulan/Sintesis)"),
+    ("neutral_tone", "Nada netral datar / gaya formal buatan AI"),
+    ("opening_hook_cliche", "Pembuka klise akademis AI ('Infrastruktur... memiliki peran penting...')"),
+    ("hedge_words_high", "Dominasi kata pembatas risiko berlebih ('dapat berdampak', 'diharapkan menjadi')"),
+    ("explanatory_framing", "Format penjelas kaku / definisi otomatis di awal bab"),
+    ("awkward_synonyms", "Kejanggalan pemilihan sinonim / bentukan kalimat rewriter"),
     ("forced_passive_active", "Restrukturisasi pasif/aktif yang dipaksa"),
-    ("over_academic_connectors", "Konektor akademis hiper-formal (dengan demikian, oleh karena itu)"),
-    ("cohesion_disparities", "Disparitas kohesi/penurunan alur narasi antar-paragraf"),
+    ("over_academic_connectors", "Konektor akademis hiper-formal berulang (dengan demikian, oleh karena itu)"),
+    ("cohesion_disparities", "Disparitas kohesi / alur narasi terstruktur seperti instruksi prompt"),
 ]
 
 REF_HEADING = re.compile(r"(?im)^\s*(references|reference list|daftar pustaka|bibliography)\s*$")
@@ -221,69 +221,67 @@ def compute_local(text):
 
 
 def score_local(key, v):
-    """
-    0 = Mirip Manusia, 100 = Mirip AI.
-    """
     if v is None:
         return None
         
     if key == "burstiness":
-        return 100 if v < 0.35 else 70 if v < 0.48 else 20
+        return 100 if v < 0.38 else 70 if v < 0.50 else 20
         
     if key == "mtld":
-        return 100 if v < 55 else 70 if v < 80 else 20
+        return 100 if v < 60 else 70 if v < 85 else 20
         
     if key == "transisi":
-        return 100 if v > 2.0 else 60 if v > 1.0 else 0
+        return 100 if v > 1.8 else 60 if v > 0.9 else 0
         
     if key == "klise":
-        return 100 if v >= 1.5 else 60 if v >= 0.5 else 0
+        return 100 if v >= 1.2 else 60 if v >= 0.4 else 0
         
     if key == "bombastis":
-        return 100 if v > 1.5 else 60 if v > 0.8 else 0
+        return 100 if v > 1.2 else 60 if v > 0.6 else 0
         
     if key == "trigram":
-        return 100 if v > 3.0 else 60 if v > 1.5 else 0
+        return 100 if v > 2.5 else 60 if v > 1.2 else 0
         
     if key == "paragraf":
-        return 100 if v < 0.30 else 60 if v < 0.45 else 0
+        return 100 if v < 0.32 else 60 if v < 0.45 else 0
         
     if key == "dash":
-        return 100 if v > 1.5 else 60 if v > 0.5 else 0
+        return 100 if v > 1.2 else 60 if v > 0.4 else 0
         
     return None
 
 
-PROMPT = """Kamu adalah auditor dokumen yang menilai apakah sebuah teks kemungkinan ditulis/di-edit oleh AI atau alat rewriter.
-Teks di bawah ini bisa berupa kutipan latar belakang, tesis, atau esai akademis formal.
+PROMPT = """Kamu adalah auditor dokumen akademis yang bertugas mendeteksi apakah suatu makalah, karya ilmiah, atau laporan disusun sebagian/sepenuhnya oleh Large Language Model (LLM/AI) seperti ChatGPT, Claude, atau DeepSeek.
 
-Kriteria Khusus Teks AI Akademis Formal (seperti Generasi Latar Belakang / Esai AI):
-- AI sangat sering memakai formula kalimat: "[Subjek] memiliki tantangan yang cukup kompleks...", "Kondisi tersebut dapat berdampak pada...", "Salah satu pendekatan yang dapat diterapkan adalah...", "Pendekatan ini berfokus pada...", "Penerapan X tidak hanya menekankan pada A, tetapi juga pada B...", "Dengan demikian, X dapat menjadi salah satu pendekatan strategis...".
-- Jika teks dipenuhi kalimat berstruktur umum tanpa data empiris/studi kasus nyata, berikan skor AI yang tinggi (75-100).
+PERHATIKAN CIRI-CIRI KHUSUS AI AKADEMIS / PAPER AI:
+1. Meskipun menyebutkan nama tempat, proyek, atau rumus (misal: 'Jalintim Sumatera Selatan', 'Tiga Dihaji', 'Moran's I'), AI modern SANGAT BISA menyusunnya jika diberi bahan prompt atau konteks.
+2. Gaya Bahasa AI Akademis Terlalu Sempurna & Terpola:
+   - Paragraf Pendahuluan selalu diawali kalimat umum: "[Topik/Infrastruktur] memiliki peran penting dalam mendukung..."
+   - Sering memakai frasa klise peralihan: "Dalam konteks ini...", "Satu kerangka analisis terpadu...", "Penelitian ini mengisi kesenjangan literatur dengan mengintegrasikan...", "Tidak hanya... tetapi juga...".
+   - Struktur bagian/bab sangat simetris, menggunakan poin-poin yang teratur rapi tanpa ada ketidakrapian narasi alami manusia.
+   - Menggunakan klausa penjelas yang berulang-ulang di awal setiap sub-bab.
 
-Skala semua skor numerik: 0 = sangat mirip tulisan manusia, 100 = sangat mirip tulisan AI.
+Beri skor tinggi (75-100) jika teks memperlihatkan alur sintaksis yang sangat teratur dan kaya akan formula frasa khas LLM akademis.
+
+Skala skor numerik: 0 = tulisan murni manusia, 100 = tulisan AI.
 
 Evaluasi Parameter Numerik (0-100):
-- perplexity_score: 100 jika alur kata sangat generik khas balasan ChatGPT/LLM.
-- typo_score: 100 jika nol kesalahan ketik/ejaan.
-- personal_detail_score: 100 jika argumen/latar belakang bersifat generik tanpa nama proyek/studi kasus riil.
-- structure_score: 100 jika alur paragraf sangat berpola kaku (Pengenalan -> Solusi -> Kesimpulan).
-- rhetorical_score: 100 jika ada pola 'tidak hanya X, tetapi juga Y' atau 'melalui A, B, dan C'.
-- summary_closing_score: 100 jika penutup diawali "Dengan demikian, ... dapat menjadi...".
-- neutral_tone_score: 100 jika nada bahasa terlalu rapi, aman, dan diplomatik.
-- awkward_synonyms_score: 100 jika terdeteksi sinonim atau bentukan kalimat rewriter.
+- perplexity_score: 100 jika alur kata sangat tertebak dan memakai formula kalimat generik LLM.
+- typo_score: 100 jika nol kesalahan ejaan/ketik (100% steril).
+- personal_detail_score: 100 jika narasi disusun dengan gaya generik ilmiah AI (meskipun ada nama proyek).
+- structure_score: 100 jika alur bab dan poin-poin sangat simetris dan rapi.
+- rhetorical_score: 100 jika dominan pola 'tidak hanya X tetapi juga Y' atau tiga serangkai berulang.
+- summary_closing_score: 100 jika bagian kesimpulan/sintesis mengulang formula rangkuman khas AI.
+- neutral_tone_score: 100 jika nada bahasa terlalu datar, formal, dan diplomatik.
+- awkward_synonyms_score: 100 jika terdeteksi sinonim yang berlebihan atau dipaksa formal.
 
 Evaluasi 22 Indikator Checklist Boolean (true/false):
-- opening_hook_cliche: true jika diawali pembuka generik ("... memiliki tantangan yang cukup kompleks").
-- hedge_words_high: true jika dominan kata pembatas ("dapat berdampak", "diharapkan menjadi").
-- explanatory_framing: true jika menyajikan penjelasan definisi kaku.
-- forced_passive_active: true jika terjadi susunan pasif yang sangat teratur.
-- over_academic_connectors: true jika sarat konektor ("dengan demikian", "oleh karena itu").
-- cohesion_disparities: true jika alur terasa diprogram.
-
-Serta kutipan dan saran:
-- contoh: 2-3 kutipan PERSIS dari teks yang paling kuat mengindikasikan AI, beserta alasan singkat.
-- saran: 2-4 kalimat saran agar tulisan terasa lebih alami.
+- opening_hook_cliche: true jika diawali pembuka generik khas AI.
+- hedge_words_high: true jika dominan kata pembatas risiko ('dapat berdampak', 'diharapkan menjadi').
+- explanatory_framing: true jika menyajikan penjelasan definisi kaku di awal bab.
+- forced_passive_active: true jika terjadi susunan pasif/aktif yang sangat teratur.
+- over_academic_connectors: true jika sarat konektor ('dengan demikian', 'oleh karena itu').
+- cohesion_disparities: true jika alur antar-subbab terasa dihasilkan dari struktur prompt.
 
 Balas HANYA dengan JSON valid:
 {
@@ -303,7 +301,15 @@ TEKS:
 def ask_claude(client, text):
     import anthropic
 
-    sample = text[:MAX_CHARS_LLM]
+    # Pengambilan sampel merata (Awal, Tengah, Akhir) hingga 40.000 karakter
+    n = len(text)
+    if n > MAX_CHARS_LLM:
+        k = (MAX_CHARS_LLM - 100) // 3
+        mid = n // 2
+        sample = text[:k] + "\n\n[...]\n\n" + text[mid - k // 2 : mid - k // 2 + k] + "\n\n[...]\n\n" + text[-k:]
+    else:
+        sample = text
+
     try:
         resp = client.messages.create(
             model=MODEL,
@@ -369,7 +375,6 @@ def evaluate(client, text):
     scores["neutral_tone"] = clamp(llm.get("neutral_tone_score"))
     scores["awkward_synonyms"] = clamp(llm.get("awkward_synonyms_score"))
 
-    # Peta 22 Checklist Indikator
     def yn(cond):
         return None if cond is None else bool(cond)
 
@@ -377,15 +382,15 @@ def evaluate(client, text):
         "burstiness_low": yn(None if loc["burstiness"] is None else loc["burstiness"] < 0.38),
         "perplexity_low": yn(None if scores["perplexity"] is None else scores["perplexity"] >= 50),
         "mtld_low": yn(None if loc["mtld"] is None else loc["mtld"] < 80),
-        "transitions_high": yn(None if loc["transisi"] is None else loc["transisi"] > 1.2),
-        "cliche_high": yn(None if loc["klise"] is None else loc["klise"] >= 0.8),
-        "bombastic_high": yn(None if loc["bombastis"] is None else loc["bombastis"] > 0.8),
-        "trigram_high": yn(None if loc["trigram"] is None else loc["trigram"] > 2.0),
+        "transitions_high": yn(None if loc["transisi"] is None else loc["transisi"] > 0.9),
+        "cliche_high": yn(None if loc["klise"] is None else loc["klise"] >= 0.4),
+        "bombastic_high": yn(None if loc["bombastis"] is None else loc["bombastis"] > 0.6),
+        "trigram_high": yn(None if loc["trigram"] is None else loc["trigram"] > 1.2),
         "paragraph_cv_low": yn(None if loc["paragraf"] is None else loc["paragraf"] < 0.35),
         "zero_typo": yn(None if scores["typo"] is None else scores["typo"] >= 80),
         "lack_personal_details": yn(None if scores["personal"] is None else scores["personal"] >= 50),
         "overly_structured": yn(None if scores["struktur"] is None else scores["struktur"] >= 60),
-        "em_dash_high": yn(None if loc["dash"] is None else loc["dash"] > 0.8),
+        "em_dash_high": yn(None if loc["dash"] is None else loc["dash"] > 0.4),
         "rhetorical_patterns": yn(None if scores["rhetorical"] is None else scores["rhetorical"] >= 40),
         "repetitive_summary": yn(None if scores["summary_closing"] is None else scores["summary_closing"] >= 40),
         "neutral_tone": yn(None if scores["neutral_tone"] is None else scores["neutral_tone"] >= 40),
@@ -402,18 +407,13 @@ def evaluate(client, text):
     n_yes = sum(1 for _, a in items if a is True)
     n_valid = sum(1 for _, a in items if a is not None)
 
-    # Rumus Hitung Gabungan
     avail = {k: w for k, w in WEIGHTS.items() if scores.get(k) is not None}
     weighted_sum = sum(scores[k] * w for k, w in avail.items()) / sum(avail.values()) if avail else 0.0
     checklist_penalty = (n_yes / n_valid * 25.0) if n_valid > 0 else 0.0
     raw_total = weighted_sum + checklist_penalty
 
-    # =========================================================================
-    # PERBAIKAN HUMAN SAFETY BUFFER:
-    # HANYA boleh meredam skor JIKA checklist "Ya" <= 2 DAN TIDAK ADA indikator AI yang menonjol.
-    # Jika checklist "Ya" >= 3, peredam MATI TOTAL!
-    # =========================================================================
-    if n_yes <= 2 and (scores.get("perplexity", 0) < 40 and scores.get("personal", 0) < 40):
+    # Buffer peredam HANYA aktif jika indikator "Ya" <= 1 dan skor AI sangat rendah
+    if n_yes <= 1 and (scores.get("perplexity", 0) < 30 and scores.get("personal", 0) < 30):
         total = round(min(4.9, (raw_total / 30.0) * 4.9), 1)
     else:
         total = min(100.0, raw_total)
@@ -454,7 +454,7 @@ def evaluate(client, text):
         notes.append(f"Teks kurang dari {MIN_WORDS} kata, hasil kurang stabil.")
     if len(text) > MAX_CHARS_LLM:
         notes.append(
-            f"Penilaian LLM memakai {MAX_CHARS_LLM:,} karakter pertama dari {len(text):,}. Statistik lokal memakai seluruh teks."
+            f"Penilaian AI memakai {MAX_CHARS_LLM:,} karakter cuplikan merata dari {len(text):,}. Statistik lokal memakai seluruh teks."
         )
     if len(avail) < len(WEIGHTS):
         notes.append("Parameter n/a dikeluarkan dan bobot sisanya dinormalisasi ulang.")
