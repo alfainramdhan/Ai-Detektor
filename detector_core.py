@@ -26,38 +26,86 @@ CLICHES = [
     "play a crucial role", "plays a pivotal role", "it is important to note",
     "in conclusion", "delve into", "rapidly evolving", "ever-evolving",
     "a testament to", "in the realm of", "underscores the importance", "tapestry",
+    "unlock the potential", "game-changer", "fostering a",
 ]
 BOMBASTIC = {
     "krusial", "signifikan", "holistik", "komprehensif", "esensial", "dinamis",
     "inovatif", "optimal", "fundamental", "transformatif", "kokoh",
     "crucial", "pivotal", "holistic", "comprehensive", "seamless", "leverage",
     "leveraging", "significant", "innovative", "essential", "dynamic", "robust",
-    "streamline", "paradigm", "synergy", "cutting-edge",
+    "streamline", "paradigm", "synergy", "cutting-edge", "indispensable",
+    "paramount", "multifaceted", "quintessential", "ubiquitous", "fundamentally",
+    "herein", "thus", "hence",
 }
 
 TRANS_RE = re.compile(
     r"\b(?:" + "|".join(re.escape(p) for p in sorted(TRANSITIONS, key=len, reverse=True)) + r")\b"
 )
 
+# 16 Parameter & Bobot
 WEIGHTS = {
-    "burstiness": 20, "perplexity": 15, "mtld": 4, "transisi": 15, "klise": 15,
-    "bombastis": 8, "trigram": 3, "paragraf": 5, "typo": 2, "personal": 4,
-    "struktur": 5, "dash": 4,
+    "burstiness": 12,
+    "perplexity": 12,
+    "mtld": 4,
+    "transisi": 8,
+    "klise": 10,
+    "bombastis": 6,
+    "trigram": 4,
+    "paragraf": 4,
+    "dash": 4,
+    "typo": 3,
+    "personal": 5,
+    "struktur": 5,
+    "rhetorical": 5,
+    "summary_closing": 4,
+    "neutral_tone": 4,
+    "awkward_synonyms": 5,
 }
+
+# 22 Indikator Checklist Labels
 LABELS = {
     "burstiness": "Burstiness (variasi panjang kalimat)",
-    "perplexity": "Perplexity (ESTIMASI Claude)",
+    "perplexity": "Perplexity (estimasi LLM)",
     "mtld": "Keragaman leksikal (MTLD)",
     "transisi": "Kata transisi per 100 kata",
     "klise": "Frasa klise per 1.000 kata",
-    "bombastis": "Kata bombastis per 100 kata",
+    "bombastis": "Kata bombastis / hiper-formal per 100 kata",
     "trigram": "Pengulangan trigram (%, per 500 kata)",
     "paragraf": "Keseragaman panjang paragraf (CV)",
-    "typo": "Kesalahan ketik/ejaan (Claude)",
-    "personal": "Detail personal/konkret (Claude)",
-    "struktur": "Struktur dokumen terlalu rapi (Claude)",
     "dash": "Tanda pisah panjang (—) per 1.000 kata",
+    "typo": "Kesalahan ketik/ejaan (penilaian LLM)",
+    "personal": "Detail personal & konkret (penilaian LLM)",
+    "struktur": "Struktur dokumen sangat rapi/simetris (penilaian LLM)",
+    "rhetorical": "Pola paralel & retoris (Not Only X But Y)",
+    "summary_closing": "Penutup mengulang ringkasan isi",
+    "neutral_tone": "Nada netral datar / diplomatik",
+    "awkward_synonyms": "Sinonim kaku / parafrase dipaksa (QuillBot)",
 }
+
+CHECKLIST_LABELS = [
+    ("burstiness_low", "Panjang kalimat seragam (CV < 0.35)"),
+    ("perplexity_low", "Perplexity rendah (alur kata sangat tertebak)"),
+    ("mtld_low", "Kosakata kurang beragam (MTLD < 65)"),
+    ("transitions_high", "Kata transisi > 2,5 per 100 kata"),
+    ("cliche_high", "Frasa klise >= 3 per 1.000 kata"),
+    ("bombastic_high", "Kata bombastis/hiper-formal > 1,5 per 100 kata"),
+    ("trigram_high", "Pengulangan trigram > 4% (per 500 kata)"),
+    ("paragraph_cv_low", "Panjang paragraf seragam (CV < 0.35)"),
+    ("zero_typo", "Nol kesalahan ketik/ejaan (100% steril)"),
+    ("lack_personal_details", "Minim detail personal, pengalaman, dan contoh konkret"),
+    ("overly_structured", "Struktur dokumen sangat rapi/simetris"),
+    ("em_dash_high", "Tanda pisah panjang (—) > 2 per 1.000 kata"),
+    ("rhetorical_patterns", "Pola 'bukan hanya X, tetapi juga Y' / tiga serangkai berulang"),
+    ("repetitive_summary", "Penutup mengulang ringkasan isi"),
+    ("neutral_tone", "Nada netral datar tanpa opini/emosi tegas"),
+    ("opening_hook_cliche", "Pembuka klise (\"In today's rapidly evolving...\")"),
+    ("hedge_words_high", "Dominasi kata pembatas risiko berlebih (appears to, tends to, arguably)"),
+    ("explanatory_framing", "Format penjelas kaku/definisi otomatis di awal kalimat"),
+    ("awkward_synonyms", "Kejanggalan pemilihan sinonim (QuillBot artifacts)"),
+    ("forced_passive_active", "Restrukturisasi pasif/aktif yang dipaksa"),
+    ("over_academic_connectors", "Konektor akademis hiper-formal (hence, herein, thus)"),
+    ("cohesion_disparities", "Disparitas kohesi/penurunan alur narasi antar-paragraf"),
+]
 
 REF_HEADING = re.compile(r"(?im)^\s*(references|reference list|daftar pustaka|bibliography)\s*$")
 
@@ -167,7 +215,7 @@ def score_local(key, v):
     if v is None:
         return None
     if key == "burstiness":
-        return 100 if v < 0.25 else 60 if v < 0.38 else 30 if v < 0.48 else 0
+        return 100 if v < 0.35 else 50 if v < 0.65 else 0
     if key == "mtld":
         return 100 if v < 45 else 60 if v < 65 else 30 if v < 85 else 0
     if key == "transisi":
@@ -185,24 +233,40 @@ def score_local(key, v):
     return None
 
 
-PROMPT = """Kamu adalah auditor dokumen yang menilai apakah sebuah teks kemungkinan ditulis AI.
+PROMPT = """Kamu adalah auditor dokumen yang menilai apakah sebuah teks kemungkinan ditulis/di-edit oleh AI atau alat rewriter (seperti ChatGPT, Claude, Gemini, QuillBot, SciSpace).
 Teks di bawah bisa berbahasa Indonesia atau Inggris. Nilai HANYA aspek berikut berdasarkan teks itu.
-Skala semua skor: 0 = sangat mirip tulisan manusia, 100 = sangat mirip tulisan AI.
+Skala semua skor numerik: 0 = sangat mirip tulisan manusia, 100 = sangat mirip tulisan AI.
 
-- perplexity_score: ESTIMASI seberapa mudah ditebak pilihan kata dan alur kalimat (100 = sangat generik/prediktif, 0 = tak terduga/khas manusia). Ini estimasi, bukan perplexity sebenarnya.
-- typo_score: 100 jika nol kesalahan ketik/ejaan; 60 jika 1-2 per 1.000 kata; 30 jika 3-5; 0 jika lebih dari 5.
+Evaluasi Parameter Numerik (0-100):
+- perplexity_score: ESTIMASI seberapa mudah ditebak pilihan kata dan alur kalimat (100 = sangat generik/prediktif, 0 = tak terduga/khas manusia).
+- typo_score: 100 jika nol kesalahan ketik/ejaan (100% steril); 60 jika 1-2 per 1.000 kata; 30 jika 3-5; 0 jika lebih dari 5.
 - personal_detail_score: 100 jika tidak ada detail personal/konkret (nama, tanggal, anekdot, pengalaman); 60 jika sedikit; 30 jika cukup; 0 jika banyak.
 - structure_score: 100 jika struktur sangat rapi dan simetris (pembuka-poin-kesimpulan, bullet seragam); 60 rapi; 30 sedang; 0 tidak beraturan.
-- pola_kontras_atau_tiga_serangkai: true jika pola "bukan hanya X, tetapi juga Y" / "not only X but also Y" atau daftar tiga serangkai muncul berulang.
-- penutup_mengulang_ringkasan: true jika paragraf penutup hanya mengulang ringkasan isi.
-- nada_netral_datar: true jika nada netral datar tanpa opini atau emosi.
+- rhetorical_score: 100 jika terdeteksi berulang pola 'bukan hanya X, tetapi juga Y' atau gabungan 3 kata sifat/benda berurutan (rule of three); 0 jika tidak ada.
+- summary_closing_score: 100 jika paragraf penutup mengulang ringkasan isi secara kaku ('In conclusion', 'Overall'); 0 jika alami.
+- neutral_tone_score: 100 jika nada netral datar tanpa emosi/opini tegas (terlalu diplomatik); 0 jika menunjukkan preferensi/emosi manusia.
+- awkward_synonyms_score: 100 jika terdeteksi kejanggalan sinonim/parafrase dipaksa khas QuillBot; 0 jika alami.
+
+Evaluasi 22 Indikator Checklist Boolean (true/false):
+- opening_hook_cliche: true jika diawali frasa pembuka klise (seperti "In today's rapidly evolving...", "In the realm of...").
+- hedge_words_high: true jika terdominasi kata kualifikasi berlebih (appears to, tends to, arguably, nuanced, multifaceted).
+- explanatory_framing: true jika menyajikan format penjelas kaku / definisi otomatis di awal kalimat.
+- forced_passive_active: true jika terjadi restrukturisasi pasif/aktif yang dipaksa atau kaku.
+- over_academic_connectors: true jika menyisipkan konektor akademis hiper-formal (hence, herein, thus) pada gagasan sederhana.
+- cohesion_disparities: true jika alur/kohesi antar-paragraf menurun akibat parafrase per kalimat.
+
+Serta kutipan dan saran:
 - contoh: 2-3 kutipan PERSIS (maks 25 kata) dari teks yang paling kuat mengindikasikan AI, beserta alasan singkat (bahasa Indonesia). Jika tidak ada, kosongkan.
 - saran: 2-4 kalimat saran agar tulisan terasa lebih alami (bahasa Indonesia).
 
-Balas HANYA dengan JSON valid, tanpa teks lain dan tanpa markdown, dengan format:
-{"perplexity_score": 0, "typo_score": 0, "personal_detail_score": 0, "structure_score": 0,
- "pola_kontras_atau_tiga_serangkai": false, "penutup_mengulang_ringkasan": false,
- "nada_netral_datar": false, "contoh": [{"kutipan": "", "alasan": ""}], "saran": ""}
+Balas HANYA dengan JSON valid, tanpa teks lain dan tanpa markdown:
+{
+ "perplexity_score": 0, "typo_score": 0, "personal_detail_score": 0, "structure_score": 0,
+ "rhetorical_score": 0, "summary_closing_score": 0, "neutral_tone_score": 0, "awkward_synonyms_score": 0,
+ "opening_hook_cliche": false, "hedge_words_high": false, "explanatory_framing": false,
+ "forced_passive_active": false, "over_academic_connectors": false, "cohesion_disparities": false,
+ "contoh": [{"kutipan": "", "alasan": ""}], "saran": ""
+}
 
 TEKS:
 ---
@@ -238,23 +302,24 @@ def clamp(x):
 
 
 def category(total):
-    if total <= 25:
-        return "Kemungkinan besar ditulis manusia"
-    if total <= 50:
-        return "Cenderung manusia / campuran"
-    if total <= 75:
-        return "Cenderung AI / campuran"
-    return "Kemungkinan besar ditulis AI"
+    if total <= 25.0:
+        return "Sangat Mungkin Manusia"
+    if total <= 50.0:
+        return "Kemungkinan Besar Manusia"
+    if total <= 75.0:
+        return "Indikasi Campuran / AI-Parafrase"
+    return "Sangat Mungkin Dibuat AI"
 
 
-def checklist_category(n_yes):
-    if n_yes <= 4:
-        return "Kemungkinan besar manusia"
-    if n_yes <= 8:
-        return "Campuran / tidak pasti"
-    if n_yes <= 11:
-        return "Cenderung AI"
-    return "Kemungkinan besar AI"
+def checklist_category(n_yes, n_valid):
+    pct = (n_yes / n_valid * 100) if n_valid > 0 else 0
+    if pct <= 20:
+        return "Dominan Alami / Manusia"
+    if pct <= 45:
+        return "Indikasi Ringan AI"
+    if pct <= 70:
+        return "Indikasi Sedang / AI-Parafrase"
+    return "Indikasi Kuat AI"
 
 
 def _fmt(v, nd=2):
@@ -265,69 +330,114 @@ def evaluate(client, text):
     loc = compute_local(text)
     llm = ask_claude(client, text)
 
-    scores = {k: score_local(k, loc.get(k)) for k in
-              ("burstiness", "mtld", "transisi", "klise", "bombastis", "trigram", "paragraf", "dash")}
+    scores = {
+        k: score_local(k, loc.get(k))
+        for k in ("burstiness", "mtld", "transisi", "klise", "bombastis", "trigram", "paragraf", "dash")
+    }
     scores["perplexity"] = clamp(llm.get("perplexity_score"))
     scores["typo"] = clamp(llm.get("typo_score"))
     scores["personal"] = clamp(llm.get("personal_detail_score"))
     scores["struktur"] = clamp(llm.get("structure_score"))
+    scores["rhetorical"] = clamp(llm.get("rhetorical_score"))
+    scores["summary_closing"] = clamp(llm.get("summary_closing_score"))
+    scores["neutral_tone"] = clamp(llm.get("neutral_tone_score"))
+    scores["awkward_synonyms"] = clamp(llm.get("awkward_synonyms_score"))
 
+    # Peta 22 Checklist Indikator
+    def yn(cond):
+        return None if cond is None else bool(cond)
+
+    check_dict = {
+        "burstiness_low": yn(None if loc["burstiness"] is None else loc["burstiness"] < 0.35),
+        "perplexity_low": yn(None if scores["perplexity"] is None else scores["perplexity"] >= 70),
+        "mtld_low": yn(None if loc["mtld"] is None else loc["mtld"] < 65),
+        "transitions_high": yn(None if loc["transisi"] is None else loc["transisi"] > 2.5),
+        "cliche_high": yn(None if loc["klise"] is None else loc["klise"] >= 3),
+        "bombastic_high": yn(None if loc["bombastis"] is None else loc["bombastis"] > 1.5),
+        "trigram_high": yn(None if loc["trigram"] is None else loc["trigram"] > 4),
+        "paragraph_cv_low": yn(None if loc["paragraf"] is None else loc["paragraf"] < 0.35),
+        "zero_typo": yn(None if scores["typo"] is None else scores["typo"] >= 100),
+        "lack_personal_details": yn(None if scores["personal"] is None else scores["personal"] >= 60),
+        "overly_structured": yn(None if scores["struktur"] is None else scores["struktur"] >= 100),
+        "em_dash_high": yn(None if loc["dash"] is None else loc["dash"] > 2),
+        "rhetorical_patterns": yn(None if scores["rhetorical"] is None else scores["rhetorical"] >= 60),
+        "repetitive_summary": yn(None if scores["summary_closing"] is None else scores["summary_closing"] >= 60),
+        "neutral_tone": yn(None if scores["neutral_tone"] is None else scores["neutral_tone"] >= 60),
+        "opening_hook_cliche": yn(llm.get("opening_hook_cliche")),
+        "hedge_words_high": yn(llm.get("hedge_words_high")),
+        "explanatory_framing": yn(llm.get("explanatory_framing")),
+        "awkward_synonyms": yn(None if scores["awkward_synonyms"] is None else scores["awkward_synonyms"] >= 60),
+        "forced_passive_active": yn(llm.get("forced_passive_active")),
+        "over_academic_connectors": yn(llm.get("over_academic_connectors")),
+        "cohesion_disparities": yn(llm.get("cohesion_disparities")),
+    }
+
+    items = [(label, check_dict.get(key)) for key, label in CHECKLIST_LABELS]
+    n_yes = sum(1 for _, a in items if a is True)
+    n_valid = sum(1 for _, a in items if a is not None)
+
+    # Rumus Hitung Gabungan (Weighted Sum + Checklist Penalty)
     avail = {k: w for k, w in WEIGHTS.items() if scores.get(k) is not None}
-    total = sum(scores[k] * w for k, w in avail.items()) / sum(avail.values())
+    weighted_sum = sum(scores[k] * w for k, w in avail.items()) / sum(avail.values()) if avail else 0.0
+    checklist_penalty = (n_yes / n_valid * 10.0) if n_valid > 0 else 0.0
+    total = min(100.0, weighted_sum + checklist_penalty)
 
     shown = {
-        "burstiness": _fmt(loc["burstiness"]), "perplexity": "-", "mtld": _fmt(loc["mtld"], 1),
-        "transisi": _fmt(loc["transisi"]), "klise": _fmt(loc["klise"]), "bombastis": _fmt(loc["bombastis"]),
-        "trigram": _fmt(loc["trigram"]), "paragraf": _fmt(loc["paragraf"]), "typo": "-",
-        "personal": "-", "struktur": "-", "dash": _fmt(loc["dash"]),
+        "burstiness": _fmt(loc["burstiness"]),
+        "perplexity": "-",
+        "mtld": _fmt(loc["mtld"], 1),
+        "transisi": _fmt(loc["transisi"]),
+        "klise": _fmt(loc["klise"]),
+        "bombastis": _fmt(loc["bombastis"]),
+        "trigram": _fmt(loc["trigram"]),
+        "paragraf": _fmt(loc["paragraf"]),
+        "dash": _fmt(loc["dash"]),
+        "typo": "-",
+        "personal": "-",
+        "struktur": "-",
+        "rhetorical": "-",
+        "summary_closing": "-",
+        "neutral_tone": "-",
+        "awkward_synonyms": "-",
     }
+
     rows = []
     for k, w in WEIGHTS.items():
         sc = scores.get(k)
         rows.append({
-            "key": k, "parameter": LABELS[k], "nilai": shown[k], "skor": sc, "bobot": w,
+            "key": k,
+            "parameter": LABELS[k],
+            "nilai": shown[k],
+            "skor": sc,
+            "bobot": w,
             "kontribusi": None if sc is None else round(sc * w / 100, 1),
         })
-
-    def yn(cond):
-        return None if cond is None else bool(cond)
-
-    items = [
-        ("Panjang kalimat seragam (CV < 0,35)", yn(None if loc["burstiness"] is None else loc["burstiness"] < 0.35)),
-        ("Perplexity rendah (estimasi)", yn(None if scores["perplexity"] is None else scores["perplexity"] >= 70)),
-        ("Kosakata kurang beragam (MTLD < 65)", yn(None if loc["mtld"] is None else loc["mtld"] < 65)),
-        ("Kata transisi > 2,5 per 100 kata", yn(None if loc["transisi"] is None else loc["transisi"] > 2.5)),
-        ("Frasa klise >= 3 per 1.000 kata", yn(None if loc["klise"] is None else loc["klise"] >= 3)),
-        ("Kata bombastis > 1,5 per 100 kata", yn(None if loc["bombastis"] is None else loc["bombastis"] > 1.5)),
-        ("Pengulangan trigram > 4% (per 500 kata)", yn(None if loc["trigram"] is None else loc["trigram"] > 4)),
-        ("Panjang paragraf seragam (CV < 0,35)", yn(None if loc["paragraf"] is None else loc["paragraf"] < 0.35)),
-        ("Nol kesalahan ketik/ejaan", yn(None if scores["typo"] is None else scores["typo"] >= 100)),
-        ("Minim detail personal dan konkret", yn(None if scores["personal"] is None else scores["personal"] >= 60)),
-        ("Struktur dokumen sangat rapi/simetris", yn(None if scores["struktur"] is None else scores["struktur"] >= 100)),
-        ("Tanda pisah panjang (—) > 2 per 1.000 kata", yn(None if loc["dash"] is None else loc["dash"] > 2)),
-        ("Pola 'bukan hanya X, tetapi juga Y' / tiga serangkai berulang", yn(llm.get("pola_kontras_atau_tiga_serangkai"))),
-        ("Penutup mengulang ringkasan isi", yn(llm.get("penutup_mengulang_ringkasan"))),
-        ("Nada netral datar tanpa opini/emosi", yn(llm.get("nada_netral_datar"))),
-    ]
-    n_yes = sum(1 for _, a in items if a)
-    n_valid = sum(1 for _, a in items if a is not None)
 
     notes = []
     if loc["n_words"] < MIN_WORDS:
         notes.append(f"Teks kurang dari {MIN_WORDS} kata, hasil kurang stabil.")
     if len(text) > MAX_CHARS_LLM:
-        notes.append(f"Penilaian Claude memakai {MAX_CHARS_LLM:,} karakter pertama dari {len(text):,}. "
-                     "Statistik lokal memakai seluruh teks.")
+        notes.append(
+            f"Penilaian LLM memakai {MAX_CHARS_LLM:,} karakter pertama dari {len(text):,}. Statistik lokal memakai seluruh teks."
+        )
     if len(avail) < len(WEIGHTS):
         notes.append("Parameter n/a dikeluarkan dan bobot sisanya dinormalisasi ulang.")
 
     return {
-        "n_words": loc["n_words"], "avg_sentence": loc["avg_sentence"], "n_chars": len(text),
-        "rows": rows, "total": total, "category": category(total),
-        "checklist": items, "n_yes": n_yes, "n_valid": n_valid,
-        "checklist_category": checklist_category(n_yes),
-        "contoh": llm.get("contoh") or [], "saran": llm.get("saran", "-"), "notes": notes,
+        "n_words": loc["n_words"],
+        "avg_sentence": loc["avg_sentence"],
+        "n_chars": len(text),
+        "rows": rows,
+        "total": total,
+        "category": category(total),
+        "checklist": items,
+        "n_yes": n_yes,
+        "n_valid": n_valid,
+        "checklist_category": checklist_category(n_yes, n_valid),
+        "contoh": llm.get("contoh") or [],
+        "saran": llm.get("saran", "-"),
+        "notes": notes,
     }
 
 
-DISCLAIMER = ("Dibuat khusus Teman Teman Apeng.")
+DISCLAIMER = "Dibuat khusus Teman Teman Apeng."
