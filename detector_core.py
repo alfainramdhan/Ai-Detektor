@@ -18,7 +18,6 @@ TRANSITIONS = [
     "overall", "it is important to note", "for instance", "as a result",
 ]
 
-# Ditambahkan klise kasual khas AI (termasuk yang memicu kelemahan di teks santai)
 CLICHES = [
     "di era digital", "di era modern", "dalam dunia yang terus berkembang",
     "dapat disimpulkan bahwa", "tidak dapat dipungkiri", "seiring dengan perkembangan",
@@ -90,19 +89,19 @@ LABELS = {
 CHECKLIST_LABELS = [
     ("burstiness_low", "Panjang kalimat seragam (CV < 0.35)"),
     ("perplexity_low", "Perplexity rendah (alur kata sangat tertebak)"),
-    ("mtld_low", "Kosakata kurang beragam (MTLD < 65)"),
-    ("transitions_high", "Kata transisi > 2,5 per 100 kata"),
-    ("cliche_high", "Frasa klise >= 3 per 1.000 kata"),
-    ("bombastic_high", "Kata bombastis/hiper-formal > 1,5 per 100 kata"),
-    ("trigram_high", "Pengulangan trigram > 4% (per 500 kata)"),
+    ("mtld_low", "Kosakata kurang beragam / sedang (MTLD < 80)"),
+    ("transitions_high", "Kata transisi > 1.0 per 100 kata"),
+    ("cliche_high", "Frasa klise >= 1.0 per 1.000 kata"),
+    ("bombastic_high", "Kata bombastis/hiper-formal > 0.8 per 100 kata"),
+    ("trigram_high", "Pengulangan trigram > 2.0% (per 500 kata)"),
     ("paragraph_cv_low", "Panjang paragraf seragam (CV < 0.35)"),
     ("zero_typo", "Nol kesalahan ketik/ejaan (100% steril)"),
     ("lack_personal_details", "Minim detail personal, pengalaman, dan contoh konkret"),
     ("overly_structured", "Struktur dokumen sangat rapi/simetris"),
-    ("em_dash_high", "Tanda pisah panjang (—) > 2 per 1.000 kata"),
+    ("em_dash_high", "Tanda pisah panjang (—) > 1.0 per 1.000 kata"),
     ("rhetorical_patterns", "Pola 'bukan hanya X, tetapi juga Y' / tiga serangkai berulang"),
     ("repetitive_summary", "Penutup mengulang ringkasan isi"),
-    ("neutral_tone", "Nada netral datar tanpa opini/emosi tegas"),
+    ("neutral_tone", "Nada netral datar / gaya santai buatan"),
     ("opening_hook_cliche", "Pembuka klise (\"In today's rapidly evolving...\" / gaya santai buatan)"),
     ("hedge_words_high", "Dominasi kata pembatas risiko berlebih (appears to, tends to, arguably)"),
     ("explanatory_framing", "Format penjelas kaku/definisi otomatis di awal kalimat"),
@@ -193,13 +192,14 @@ def compute_local(text):
     sent_lens = [len(tokenize(s)) for s in split_sentences(text)]
     tri_vals = []
     win = 500
-    if n >= 200:
-        starts = range(0, n - win + 1, win) if n >= win else [0]
+    if n >= 150:
+        starts = range(0, max(1, n - win + 1), win)
         for i in starts:
             ch = words[i:i + win]
-            tg = list(zip(ch, ch[1:], ch[2:]))
-            tri_vals.append((len(tg) - len(set(tg))) / len(tg) * 100)
-    paras = [p for p in re.split(r"\n\s*\n", text) if len(tokenize(p)) >= 10]
+            if len(ch) >= 3:
+                tg = list(zip(ch, ch[1:], ch[2:]))
+                tri_vals.append((len(tg) - len(set(tg))) / len(tg) * 100)
+    paras = [p for p in re.split(r"\n\s*\n", text) if len(tokenize(p)) >= 5]
     wc = Counter(words)
 
     return {
@@ -219,33 +219,34 @@ def compute_local(text):
 def score_local(key, v):
     """
     0 = Mirip Manusia, 100 = Mirip AI.
+    REKALIBRASI TERKETAT:
     """
     if v is None:
         return None
         
     if key == "burstiness":
-        return 100 if v < 0.35 else 50 if v < 0.55 else 0
+        return 100 if v < 0.38 else 75 if v < 0.50 else 20
         
     if key == "mtld":
-        return 100 if v < 45 else 60 if v < 65 else 0
+        return 100 if v < 50 else 70 if v < 80 else 20
         
     if key == "transisi":
-        return 100 if v > 2.5 else 60 if v > 1.2 else 0
+        return 100 if v > 2.0 else 70 if v > 1.0 else 20
         
     if key == "klise":
-        return 100 if v >= 2.0 else 60 if v >= 0.8 else 0
+        return 100 if v >= 1.5 else 70 if v >= 0.5 else 20
         
     if key == "bombastis":
-        return 100 if v > 1.8 else 60 if v > 0.8 else 0
+        return 100 if v > 1.5 else 60 if v > 0.5 else 20
         
     if key == "trigram":
-        return 100 if v > 4.0 else 60 if v > 2.0 else 0
+        return 100 if v > 3.5 else 60 if v > 1.5 else 20
         
     if key == "paragraf":
-        return 100 if v < 0.35 else 60 if v < 0.50 else 0
+        return 100 if v < 0.35 else 70 if v < 0.50 else 20
         
     if key == "dash":
-        return 100 if v > 2.0 else 60 if v > 0.5 else 0
+        return 100 if v > 1.5 else 60 if v > 0.5 else 20
         
     return None
 
@@ -366,25 +367,25 @@ def evaluate(client, text):
         return None if cond is None else bool(cond)
 
     check_dict = {
-        "burstiness_low": yn(None if loc["burstiness"] is None else loc["burstiness"] < 0.35),
-        "perplexity_low": yn(None if scores["perplexity"] is None else scores["perplexity"] >= 60),
-        "mtld_low": yn(None if loc["mtld"] is None else loc["mtld"] < 65),
-        "transitions_high": yn(None if loc["transisi"] is None else loc["transisi"] > 2.0),
-        "cliche_high": yn(None if loc["klise"] is None else loc["klise"] >= 1.5),
-        "bombastic_high": yn(None if loc["bombastis"] is None else loc["bombastis"] > 1.2),
-        "trigram_high": yn(None if loc["trigram"] is None else loc["trigram"] > 3.5),
+        "burstiness_low": yn(None if loc["burstiness"] is None else loc["burstiness"] < 0.38),
+        "perplexity_low": yn(None if scores["perplexity"] is None else scores["perplexity"] >= 50),
+        "mtld_low": yn(None if loc["mtld"] is None else loc["mtld"] < 80),
+        "transitions_high": yn(None if loc["transisi"] is None else loc["transisi"] > 1.0),
+        "cliche_high": yn(None if loc["klise"] is None else loc["klise"] >= 0.5),
+        "bombastic_high": yn(None if loc["bombastis"] is None else loc["bombastis"] > 0.5),
+        "trigram_high": yn(None if loc["trigram"] is None else loc["trigram"] > 1.5),
         "paragraph_cv_low": yn(None if loc["paragraf"] is None else loc["paragraf"] < 0.35),
         "zero_typo": yn(None if scores["typo"] is None else scores["typo"] >= 80),
-        "lack_personal_details": yn(None if scores["personal"] is None else scores["personal"] >= 60),
-        "overly_structured": yn(None if scores["struktur"] is None else scores["struktur"] >= 70),
-        "em_dash_high": yn(None if loc["dash"] is None else loc["dash"] > 1.5),
-        "rhetorical_patterns": yn(None if scores["rhetorical"] is None else scores["rhetorical"] >= 50),
-        "repetitive_summary": yn(None if scores["summary_closing"] is None else scores["summary_closing"] >= 50),
-        "neutral_tone": yn(None if scores["neutral_tone"] is None else scores["neutral_tone"] >= 50),
+        "lack_personal_details": yn(None if scores["personal"] is None else scores["personal"] >= 50),
+        "overly_structured": yn(None if scores["struktur"] is None else scores["struktur"] >= 60),
+        "em_dash_high": yn(None if loc["dash"] is None else loc["dash"] > 0.5),
+        "rhetorical_patterns": yn(None if scores["rhetorical"] is None else scores["rhetorical"] >= 40),
+        "repetitive_summary": yn(None if scores["summary_closing"] is None else scores["summary_closing"] >= 40),
+        "neutral_tone": yn(None if scores["neutral_tone"] is None else scores["neutral_tone"] >= 40),
         "opening_hook_cliche": yn(llm.get("opening_hook_cliche")),
         "hedge_words_high": yn(llm.get("hedge_words_high")),
         "explanatory_framing": yn(llm.get("explanatory_framing")),
-        "awkward_synonyms": yn(None if scores["awkward_synonyms"] is None else scores["awkward_synonyms"] >= 50),
+        "awkward_synonyms": yn(None if scores["awkward_synonyms"] is None else scores["awkward_synonyms"] >= 40),
         "forced_passive_active": yn(llm.get("forced_passive_active")),
         "over_academic_connectors": yn(llm.get("over_academic_connectors")),
         "cohesion_disparities": yn(llm.get("cohesion_disparities")),
@@ -394,10 +395,10 @@ def evaluate(client, text):
     n_yes = sum(1 for _, a in items if a is True)
     n_valid = sum(1 for _, a in items if a is not None)
 
-    # Rumus Hitung Gabungan (Weighted Sum + Checklist Penalty)
+    # Rumus Hitung Gabungan (Weighted Sum + Checklist Penalty dinaikkan ke 30.0)
     avail = {k: w for k, w in WEIGHTS.items() if scores.get(k) is not None}
     weighted_sum = sum(scores[k] * w for k, w in avail.items()) / sum(avail.values()) if avail else 0.0
-    checklist_penalty = (n_yes / n_valid * 15.0) if n_valid > 0 else 0.0
+    checklist_penalty = (n_yes / n_valid * 30.0) if n_valid > 0 else 0.0
     total = min(100.0, weighted_sum + checklist_penalty)
 
     shown = {
