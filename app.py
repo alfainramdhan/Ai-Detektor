@@ -16,8 +16,10 @@ MAX_FILES = 10
 
 # --- Teks & Informasi Utama ---
 BADGE = "this application was made specifically for Apeng's Friends"
-SUBTITLE = ("Periksa apakah sebuah tulisan kemungkinan dibuat AI. "
-            "Statistik dihitung langsung, aspek yang butuh pemahaman bahasa dinilai oleh model AI.")
+SUBTITLE = (
+    "Periksa apakah sebuah tulisan kemungkinan dibuat AI. "
+    "Statistik dihitung langsung, aspek yang butuh pemahaman bahasa dinilai oleh model AI."
+)
 
 CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=IBM+Plex+Mono:wght@400&display=swap');
@@ -168,8 +170,9 @@ button[data-testid="stBaseButton-primary"]:hover,button[kind="primary"]:hover{ba
 @media (max-width:720px){.nav-links{display:none;}.nav{padding-left:1.1rem;}.sec{margin-top:4rem;}}
 """
 
-st.set_page_config(page_title="Apeng AI Content Detector", page_icon="🔎", layout="wide",
-                   initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="Apeng AI Content Detector", page_icon="🔎", layout="wide", initial_sidebar_state="collapsed"
+)
 
 
 def html_block(*lines):
@@ -189,7 +192,7 @@ if not getattr(core.ask_claude, "_fast", False):
         if len(text) > n:
             k = (n - 4) // 3
             mid = len(text) // 2
-            text = text[:k] + "\n\n" + text[mid - k // 2: mid - k // 2 + k] + "\n\n" + text[-k:]
+            text = text[:k] + "\n\n" + text[mid - k // 2 : mid - k // 2 + k] + "\n\n" + text[-k:]
         return _orig_ask(client, text)
 
     _ask_fast._fast = True
@@ -199,15 +202,6 @@ if not getattr(core.ask_claude, "_fast", False):
 @st.cache_resource
 def get_pool():
     return ThreadPoolExecutor(max_workers=3)
-
-
-# Label tabel tanpa nama merek
-core.LABELS.update({
-    "perplexity": "Perplexity (estimasi AI)",
-    "typo": "Kesalahan ketik/ejaan (penilaian AI)",
-    "personal": "Detail personal/konkret (penilaian AI)",
-    "struktur": "Struktur dokumen terlalu rapi (penilaian AI)",
-})
 
 
 def scrub(text):
@@ -290,42 +284,60 @@ def read_upload(f):
 
 def render_result(name, r):
     total = r["total"]
-    tone = "green" if total <= 25 else "blue" if total <= 50 else "orange" if total <= 75 else "red"
+    tone = "green" if total <= 25.0 else "blue" if total <= 50.0 else "orange" if total <= 75.0 else "red"
     width = min(100, max(2, total))
     st.markdown(f'<div class="file-title">📄 {html.escape(name)}</div>', unsafe_allow_html=True)
-    st.markdown(html_block(
-        '<div class="score-card">',
-        '<div class="score-label">Total skor AI</div>',
-        f'<div class="score-num">{total:.1f}<small>%</small></div>',
-        f'<span class="pill {tone}">{html.escape(r["category"])}</span>',
-        f'<div class="bar"><div class="{tone}" style="width:{width:.1f}%"></div></div>',
-        '</div>',
-        '<div class="stats">',
-        f'<div class="stat"><b>{r["n_yes"]}/{r["n_valid"]}</b><span>Checklist "Ya"</span></div>',
-        f'<div class="stat"><b>{r["n_words"]:,}</b><span>Jumlah kata</span></div>',
-        f'<div class="stat"><b style="font-size:1.05rem;line-height:1.7">{html.escape(r["checklist_category"])}</b><span>Kesimpulan checklist</span></div>',
-        '</div>',
-    ), unsafe_allow_html=True)
+    st.markdown(
+        html_block(
+            '<div class="score-card">',
+            '<div class="score-label">Total skor AI</div>',
+            f'<div class="score-num">{total:.1f}<small>%</small></div>',
+            f'<span class="pill {tone}">{html.escape(r["category"])}</span>',
+            f'<div class="bar"><div class="{tone}" style="width:{width:.1f}%"></div></div>',
+            '</div>',
+            '<div class="stats">',
+            f'<div class="stat"><b>{r["n_yes"]}/{r["n_valid"]}</b><span>Checklist "Ya"</span></div>',
+            f'<div class="stat"><b>{r["n_words"]:,}</b><span>Jumlah kata</span></div>',
+            f'<div class="stat"><b style="font-size:1.05rem;line-height:1.7">{html.escape(r["checklist_category"])}</b><span>Kesimpulan checklist</span></div>',
+            '</div>',
+        ),
+        unsafe_allow_html=True,
+    )
     for n in r["notes"]:
-        n = re.sub(r"Penilaian Claude memakai [\d,]+ karakter pertama dari ([\d,]+)\.",
-                   r"Penilaian AI memakai cuplikan awal, tengah, dan akhir dari \1 karakter.", n)
+        n = re.sub(
+            r"Penilaian Claude memakai [\d,]+ karakter pertama dari ([\d,]+)\.",
+            r"Penilaian AI memakai cuplikan awal, tengah, dan akhir dari \1 karakter.",
+            n,
+        )
         st.caption("ℹ️ " + scrub(n))
 
-    tab_a, tab_b, tab_c = st.tabs(["A. Skor parameter", "B. Checklist Ya/Tidak", "C. Contoh & saran"])
+    tab_a, tab_b, tab_c = st.tabs(["A. Skor parameter (16)", "B. Checklist Ya/Tidak (22)", "C. Contoh & saran"])
     with tab_a:
-        df = pd.DataFrame([{
-            "Parameter": scrub(x["parameter"]), "Nilai": x["nilai"],
-            "Skor (0-100)": "n/a" if x["skor"] is None else str(x["skor"]),
-            "Bobot (%)": str(x["bobot"]),
-            "Kontribusi": "n/a" if x["kontribusi"] is None else str(x["kontribusi"]),
-        } for x in r["rows"]])
+        df = pd.DataFrame(
+            [
+                {
+                    "Parameter": scrub(x["parameter"]),
+                    "Nilai": x["nilai"],
+                    "Skor (0-100)": "n/a" if x["skor"] is None else str(x["skor"]),
+                    "Bobot (%)": str(x["bobot"]),
+                    "Kontribusi": "n/a" if x["kontribusi"] is None else str(x["kontribusi"]),
+                }
+                for x in r["rows"]
+            ]
+        )
         st.dataframe(df, hide_index=True)
-        st.caption("0 = mirip manusia, 100 = mirip AI. Perplexity hanya estimasi dari model AI.")
+        st.caption("0 = mirip manusia, 100 = mirip AI. Parameter LLM dievaluasi via model AI terintegrasi.")
     with tab_b:
-        dfc = pd.DataFrame([{
-            "No": i, "Indikator": label,
-            "Jawaban": "n/a" if ans is None else ("Ya" if ans else "Tidak"),
-        } for i, (label, ans) in enumerate(r["checklist"], 1)])
+        dfc = pd.DataFrame(
+            [
+                {
+                    "No": i,
+                    "Indikator Checklist": label,
+                    "Jawaban": "n/a" if ans is None else ("Ya" if ans else "Tidak"),
+                }
+                for i, (label, ans) in enumerate(r["checklist"], 1)
+            ]
+        )
         st.dataframe(dfc, hide_index=True)
     with tab_c:
         if not r["contoh"]:
@@ -339,8 +351,13 @@ def render_result(name, r):
 def summary_csv(results):
     rows = []
     for name, r in results:
-        row = {"file": name, "total_skor_ai": round(r["total"], 1), "kategori": r["category"],
-               "checklist_ya": r["n_yes"], "jumlah_kata": r["n_words"]}
+        row = {
+            "file": name,
+            "total_skor_ai": round(r["total"], 1),
+            "kategori": r["category"],
+            "checklist_ya": r["n_yes"],
+            "jumlah_kata": r["n_words"],
+        }
         for x in r["rows"]:
             row["skor_" + x["key"]] = x["skor"]
             row["nilai_" + x["key"]] = x["nilai"]
@@ -349,47 +366,74 @@ def summary_csv(results):
 
 
 SLIDES = [
-    ("01", "Statistik lokal", "Dihitung langsung",
-     "Variasi kalimat, kosakata, transisi, dan pola klise diukur langsung dari teks Anda.",
-     ["ChatGPT", "Claude", "DeepSeek", "Gemini", "Copilot"], "rust", "black"),
-    ("02", "Penilaian AI", "Paham bahasa",
-     "Aspek yang butuh pemahaman bahasa dinilai oleh model AI.",
-     ["Grok", "Llama", "Mistral", "Qwen"], "black", "rust"),
-    ("03", "Transparan", "Tanpa kotak hitam",
-     "Setiap parameter, skor, dan bobotnya bisa dilihat.",
-     ["Kimi", "Perplexity", "Meta AI", "Dan lainnya"], "rust", "mist"),
+    (
+        "01",
+        "Statistik lokal",
+        "Dihitung langsung",
+        "Variasi kalimat, kosakata, transisi, dan pola klise diukur langsung dari teks Anda.",
+        ["ChatGPT", "Claude", "DeepSeek", "Gemini", "Copilot"],
+        "rust",
+        "black",
+    ),
+    (
+        "02",
+        "Penilaian AI",
+        "Paham bahasa",
+        "Aspek yang butuh pemahaman bahasa dinilai oleh model AI.",
+        ["Grok", "Llama", "Mistral", "Qwen"],
+        "black",
+        "rust",
+    ),
+    (
+        "03",
+        "Transparan",
+        "Tanpa kotak hitam",
+        "Setiap parameter, skor, dan bobotnya bisa dilihat.",
+        ["Kimi", "Perplexity", "Meta AI", "Dan lainnya"],
+        "rust",
+        "mist",
+    ),
 ]
 
 
 def slide_html(s):
     num, title, tag, desc, chips, left, right = s
     chip_html = "".join(f"<span>{c}</span>" for c in chips)
-    return (f'<div class="slide"><div class="pn pn-{left}">'
-            f'<span class="mono">Fitur {num} / 03</span>'
-            f'<div><div class="slide-title">{title}</div><p class="slide-desc">{desc}</p>'
-            f'<div class="chips">{chip_html}</div></div></div>'
-            f'<div class="pn pn-{right} pn-num"><span class="mono">{tag} ↗</span>'
-            f'<div class="slide-num">{num}</div></div></div>')
+    return (
+        f'<div class="slide"><div class="pn pn-{left}">'
+        f'<span class="mono">Fitur {num} / 03</span>'
+        f'<div><div class="slide-title">{title}</div><p class="slide-desc">{desc}</p>'
+        f'<div class="chips">{chip_html}</div></div></div>'
+        f'<div class="pn pn-{right} pn-num"><span class="mono">{tag} ↗</span>'
+        f'<div class="slide-num">{num}</div></div></div>'
+    )
 
 
-SLIDER_HTML = ('<div class="slider"><div class="track">'
-               + "".join(slide_html(s) for s in SLIDES + SLIDES[:1])
-               + '</div><div class="dots"><i></i><i></i><i></i></div></div>')
+SLIDER_HTML = (
+    '<div class="slider"><div class="track">'
+    + "".join(slide_html(s) for s in SLIDES + SLIDES[:1])
+    + '</div><div class="dots"><i></i><i></i><i></i></div></div>'
+)
 
-_MQ = "".join(f"<span>{w}</span><i>/</i>" for w in
-              ["ChatGPT", "Claude", "DeepSeek", "Gemini", "Copilot", "Grok", "Llama", "Mistral", "Qwen"])
+_MQ = "".join(
+    f"<span>{w}</span><i>/</i>"
+    for w in ["ChatGPT", "Claude", "DeepSeek", "Gemini", "Copilot", "Grok", "Llama", "Mistral", "Qwen"]
+)
 MARQUEE_HTML = f'<div class="marquee"><div class="marquee-in">{_MQ}{_MQ}</div></div>'
 
-
-NAV_HTML = ('<div class="nav"><a class="nav-brand" href="#" target="_self">Apeng<i>.</i></a><div class="nav-links">'
-            '<a href="#fitur" target="_self">Fitur</a><a href="#cara-kerja" target="_self">Cara kerja</a>'
-            '<a href="#perbandingan" target="_self">Perbandingan</a><a href="#faq" target="_self">FAQ</a></div>'
-            '<a class="nav-cta" href="#mulai" target="_self">Mulai analisis</a></div>')
+NAV_HTML = (
+    '<div class="nav"><a class="nav-brand" href="#" target="_self">Apeng<i>.</i></a><div class="nav-links">'
+    '<a href="#fitur" target="_self">Fitur</a><a href="#cara-kerja" target="_self">Cara kerja</a>'
+    '<a href="#perbandingan" target="_self">Perbandingan</a><a href="#faq" target="_self">FAQ</a></div>'
+    '<a class="nav-cta" href="#mulai" target="_self">Mulai analisis</a></div>'
+)
 
 
 def sec_head(eyebrow, title, sub, sid):
-    return (f'<div class="sec" id="{sid}"><div class="sec-eyebrow"><i></i>{eyebrow}</div>'
-            f'<div class="sec-title">{title}</div><p class="sec-sub">{sub}</p></div>')
+    return (
+        f'<div class="sec" id="{sid}"><div class="sec-eyebrow"><i></i>{eyebrow}</div>'
+        f'<div class="sec-title">{title}</div><p class="sec-sub">{sub}</p></div>'
+    )
 
 
 STEPS = [
@@ -400,56 +444,90 @@ STEPS = [
     ("Lihat skor", "Skor 0-100, checklist, kalimat mencurigakan, dan saran.", "", ""),
     ("Unduh", "Simpan ringkasan skor sebagai file CSV.", "CSV", ""),
 ]
-STEPS_HTML = ('<div class="steps">' + "".join(
-    f'<div class="step {k}"><div class="step-dot">{i}</div><div class="step-t">{t}</div><p>{d}</p>'
-    + (f'<span class="step-tag">{tag}</span>' if tag else "") + '</div>'
-    for i, (t, d, tag, k) in enumerate(STEPS, 1)) + '</div>')
+STEPS_HTML = (
+    '<div class="steps">'
+    + "".join(
+        f'<div class="step {k}"><div class="step-dot">{i}</div><div class="step-t">{t}</div><p>{d}</p>'
+        + (f'<span class="step-tag">{tag}</span>' if tag else "")
+        + "</div>"
+        for i, (t, d, tag, k) in enumerate(STEPS, 1)
+    )
+    + "</div>"
+)
 
 CMP_COLS = ["Tebak manual", "Detektor satu-skor", "Apeng Detector"]
 _Y, _N, _P = "y", "n", "p"
 CMP_ROWS = [
-    ("Skor diuraikan per parameter", [(_N, "✕", "Tidak ada"), (_N, "✕", "Umumnya tidak"), (_Y, "✓", "Ya, lengkap dengan bobot")]),
+    ("Skor diuraikan per parameter", [(_N, "✕", "Tidak ada"), (_N, "✕", "Umumnya tidak"), (_Y, "✓", "Ya, 16 parameter")]),
     ("Statistik terukur", [(_N, "✕", "Hanya perasaan"), (_P, "◐", "Tidak ditampilkan"), (_Y, "✓", "Dihitung langsung")]),
     ("Penilaian bahasa oleh AI", [(_P, "◐", "Subjektif"), (_P, "◐", "Tidak dijelaskan"), (_Y, "✓", "Disertai alasan")]),
     ("Kalimat yang dicurigai", [(_P, "◐", "Tergantung pembaca"), (_P, "◐", "Kadang"), (_Y, "✓", "Dikutip + alasan")]),
     ("Saran revisi", [(_P, "◐", "Tergantung pembaca"), (_N, "✕", "Jarang"), (_Y, "✓", "Ya")]),
     ("Teks Indonesia dan Inggris", [(_P, "◐", "Tergantung pembaca"), (_P, "◐", "Bervariasi"), (_Y, "✓", "Ya")]),
 ]
-CMP_HTML = ('<div class="cmp-wrap"><table class="cmp"><thead><tr><th>Aspek</th>'
-            + "".join(f'<th class="{"us" if i == 2 else ""}">{c}</th>' for i, c in enumerate(CMP_COLS))
-            + '</tr></thead><tbody>'
-            + "".join("<tr><td>" + a + "</td>" + "".join(
-                f'<td class="{c} {"us" if i == 2 else ""}"><b>{s}</b> {t}</td>' for i, (c, s, t) in enumerate(cells))
-                + "</tr>" for a, cells in CMP_ROWS)
-            + '</tbody></table></div>'
-            '<p class="cmp-note">* Perbandingan bersifat umum antar cara kerja, bukan penilaian produk tertentu. '
-            'Hasil detektor adalah indikasi, bukan bukti mutlak.</p>')
+CMP_HTML = (
+    '<div class="cmp-wrap"><table class="cmp"><thead><tr><th>Aspek</th>'
+    + "".join(f'<th class="{"us" if i == 2 else ""}">{c}</th>' for i, c in enumerate(CMP_COLS))
+    + "</tr></thead><tbody>"
+    + "".join(
+        "<tr><td>"
+        + a
+        + "</td>"
+        + "".join(
+            f'<td class="{c} {"us" if i == 2 else ""}"><b>{s}</b> {t}</td>' for i, (c, s, t) in enumerate(cells)
+        )
+        + "</tr>"
+        for a, cells in CMP_ROWS
+    )
+    + "</tbody></table></div>"
+    '<p class="cmp-note">* Perbandingan bersifat umum antar cara kerja, bukan penilaian produk tertentu. '
+    "Hasil detektor adalah indikasi, bukan bukti mutlak.</p>"
+)
 
-_DATA_ANS = ("Semua dokumen yang Anda unggah atau tempel dijamin aman, rahasia, dan terenkripsi dengan protokol keamanan siber ketat. "
-             "File hanya digunakan secara terbatas selama proses analisis evaluasi dan tidak akan dibocorkan atau dipublikasikan.")
+_DATA_ANS = (
+    "Semua dokumen yang Anda unggah atau tempel dijamin aman, rahasia, dan terenkripsi dengan protokol keamanan siber ketat. "
+    "File hanya digunakan secara terbatas selama proses analisis evaluasi dan tidak akan dibocorkan atau dipublikasikan."
+)
 
 FAQS = [
-    ("Apakah hasilnya pasti benar?",
-     "Tidak. Skor adalah indikasi berdasarkan statistik dan penilaian AI, bukan bukti. Jangan jadikan satu-satunya dasar keputusan."),
+    (
+        "Apakah hasilnya pasti benar?",
+        "Tidak. Skor adalah indikasi berdasarkan statistik dan penilaian AI, bukan bukti. Jangan jadikan satu-satunya dasar keputusan.",
+    ),
     ("Apakah dokumen saya aman dan rahasia?", _DATA_ANS),
-    ("Bahasa dan format apa yang didukung?",
-     "Teks berbahasa Indonesia dan Inggris, dalam file PDF atau Word (.docx), atau ditempel langsung. "
-     "PDF hasil scan tanpa teks tidak bisa dibaca."),
-    ("Berapa panjang teks yang ideal?",
-     "Sekitar 300 kata atau lebih agar hasil stabil. Teks di bawah 50 kata dilewati. Hingga 10 file bisa diproses sekaligus."),
-    ("Kenapa skornya bisa sedikit berbeda saat diulang?",
-     "Bagian penilaian oleh AI bisa bervariasi tipis antar percobaan. Statistik lokal selalu sama untuk teks yang sama."),
+    (
+        "Bahasa dan format apa yang didukung?",
+        "Teks berbahasa Indonesia dan Inggris, dalam file PDF atau Word (.docx), atau ditempel langsung. "
+        "PDF hasil scan tanpa teks tidak bisa dibaca.",
+    ),
+    (
+        "Berapa panjang teks yang ideal?",
+        "Sekitar 300 kata atau lebih agar hasil stabil. Teks di bawah 50 kata dilewati. Hingga 10 file bisa diproses sekaligus.",
+    ),
+    (
+        "Kenapa skornya bisa sedikit berbeda saat diulang?",
+        "Bagian penilaian oleh AI bisa bervariasi tipis antar percobaan. Statistik lokal selalu sama untuk teks yang sama.",
+    ),
 ]
-FAQ_HTML = '<div class="faq">' + "".join(
-    f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in FAQS) + '</div>'
+FAQ_HTML = (
+    '<div class="faq">' + "".join(f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in FAQS) + "</div>"
+)
 
 SECTIONS_HTML = html_block(
-    sec_head("Cara kerja", "Enam langkah, dari berkas <em>sampai skor.</em>",
-             "Setiap tahap transparan: Anda tahu mana yang dihitung langsung di aplikasi dan mana yang dinilai AI.", "cara-kerja"),
+    sec_head(
+        "Cara kerja",
+        "Enam langkah, dari berkas <em>sampai skor.</em>",
+        "Setiap tahap transparan: Anda tahu mana yang dihitung langsung di aplikasi dan mana yang dinilai AI.",
+        "cara-kerja",
+    ),
     STEPS_HTML,
-    sec_head("Perbandingan", "Kenapa bukan <em>tebak-tebakan?</em>",
-             "Menilai tulisan AI dengan perasaan sering meleset, dan satu angka tanpa penjelasan sulit dipertanggungjawabkan. "
-             "Di sini setiap hitungan diperlihatkan.", "perbandingan"),
+    sec_head(
+        "Perbandingan",
+        "Kenapa bukan <em>tebak-tebakan?</em>",
+        "Menilai tulisan AI dengan perasaan sering meleset, dan satu angka tanpa penjelasan sulit dipertanggungjawabkan. "
+        "Di sini setiap hitungan diperlihatkan.",
+        "perbandingan",
+    ),
     CMP_HTML,
     sec_head("FAQ", "Pertanyaan yang <em>sering muncul.</em>", "", "faq"),
     FAQ_HTML,
@@ -457,17 +535,20 @@ SECTIONS_HTML = html_block(
 
 
 # ---------------- Tampilan Utama ----------------
-st.markdown(html_block(
-    NAV_HTML,
-    '<div class="hero">',
-    f'<span class="eyebrow">{html.escape(BADGE)}</span>',
-    '<div class="hero-title">Apeng AI <em>Content Detector</em></div>',
-    f'<div class="hero-sub">{html.escape(SUBTITLE)}</div>',
-    MARQUEE_HTML,
-    '</div>',
-    '<div id="fitur"></div>',
-    SLIDER_HTML,
-), unsafe_allow_html=True)
+st.markdown(
+    html_block(
+        NAV_HTML,
+        '<div class="hero">',
+        f'<span class="eyebrow">{html.escape(BADGE)}</span>',
+        '<div class="hero-title">Apeng AI <em>Content Detector</em></div>',
+        f'<div class="hero-sub">{html.escape(SUBTITLE)}</div>',
+        MARQUEE_HTML,
+        "</div>",
+        '<div id="fitur"></div>',
+        SLIDER_HTML,
+    ),
+    unsafe_allow_html=True,
+)
 
 default_key = server_key()
 typed_key = ""
@@ -475,31 +556,39 @@ typed_key = ""
 # Jika API key tidak ada di Secrets, tampilkan kolom input di halaman utama (bukan sidebar)
 if not default_key:
     typed_key = st.text_input(
-        "API key", type="password", placeholder="Masukkan API key layanan AI Anda",
+        "API key",
+        type="password",
+        placeholder="Masukkan API key layanan AI Anda",
         help="Key hanya dipakai selama sesi ini dan tidak disimpan.",
     )
 
 api_key = typed_key or default_key
 
 # Notice Keamanan & Kerahasiaan
-st.info("Pemberitahuan Keamanan: Semua file yang Anda unggah atau tempel dijamin aman, rahasia, dan sepenuhnya terenkripsi dengan protokol keamanan siber. Dokumen tidak akan dibocorkan atau dipublikasikan.")
+st.info(
+    "Pemberitahuan Keamanan: Semua file yang Anda unggah atau tempel dijamin aman, rahasia, dan sepenuhnya terenkripsi dengan protokol keamanan siber. Dokumen tidak akan dibocorkan atau dipublikasikan."
+)
 agree = st.checkbox("Saya mengerti dan menyetujui pemrosesan dokumen ini secara aman.")
 
 st.markdown('<div class="section-title" id="mulai">Mulai analisis</div>', unsafe_allow_html=True)
 try:
     card = st.container(border=True, key="main_card")
-except TypeError:   # Streamlit versi lama
+except TypeError:  # Streamlit versi lama
     card = st.container(border=True)
 
 with card:
     tab_file, tab_text = st.tabs(["📎 Unggah file", "✍️ Tempel teks"])
     with tab_file:
-        files = st.file_uploader("PDF atau Word (.docx)", type=["pdf", "docx"], accept_multiple_files=True,
-                                 label_visibility="collapsed")
+        files = st.file_uploader(
+            "PDF atau Word (.docx)", type=["pdf", "docx"], accept_multiple_files=True, label_visibility="collapsed"
+        )
     with tab_text:
-        pasted = st.text_area("Tempel teks di sini (minimal ±300 kata)", height=220,
-                              placeholder="Tempel teks di sini (minimal ±300 kata)...",
-                              label_visibility="collapsed")
+        pasted = st.text_area(
+            "Tempel teks di sini (minimal ±300 kata)",
+            height=220,
+            placeholder="Tempel teks di sini (minimal ±300 kata)...",
+            label_visibility="collapsed",
+        )
     run = st.button("Analisis", type="primary")
 
 if run:
@@ -569,14 +658,18 @@ if results:
     for name, r in results:
         render_result(name, r)
         st.divider()
-    st.download_button("⬇️ Unduh ringkasan skor (CSV)", summary_csv(results),
-                       file_name="hasil_deteksi.csv", mime="text/csv")
+    st.download_button(
+        "⬇️ Unduh ringkasan skor (CSV)", summary_csv(results), file_name="hasil_deteksi.csv", mime="text/csv"
+    )
 
 st.markdown(SECTIONS_HTML, unsafe_allow_html=True)
 
-st.markdown(html_block(
-    '<div class="fine">',
-    (html.escape(core.DISCLAIMER) + "<br>") if results else "",
-    'Semua dokumen terenkripsi dan dijaga kerahasiaannya secara ketat. File Anda tidak akan dibocorkan atau dipublikasikan.',
-    '</div>',
-), unsafe_allow_html=True)
+st.markdown(
+    html_block(
+        '<div class="fine">',
+        (html.escape(core.DISCLAIMER) + "<br>") if results else "",
+        "Semua dokumen terenkripsi dan dijaga kerahasiaannya secara ketat. File Anda tidak akan dibocorkan atau dipublikasikan.",
+        "</div>",
+    ),
+    unsafe_allow_html=True,
+)
