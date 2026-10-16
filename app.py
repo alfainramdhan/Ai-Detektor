@@ -491,7 +491,7 @@ _DATA_ANS = (
 
 FAQS = [
     (
-        "Apakah hasilnya pasti benar?",
+        "Apakah hasilnya pasti akurat?",
         "Tidak. Skor adalah indikasi berdasarkan statistik dan penilaian AI, bukan bukti. Jangan jadikan satu-satunya dasar keputusan.",
     ),
     ("Apakah dokumen saya aman dan rahasia?", _DATA_ANS),
