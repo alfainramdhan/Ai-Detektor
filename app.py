@@ -513,6 +513,28 @@ FAQ_HTML = (
     '<div class="faq">' + "".join(f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in FAQS) + "</div>"
 )
 
+# Deklarasi gabungan komponen komponen HTML landing page
+SECTIONS_HTML = html_block(
+    sec_head(
+        "Cara kerja",
+        "Enam langkah, dari berkas <em>sampai skor.</em>",
+        "Setiap tahap transparan: Anda tahu mana yang dihitung langsung di aplikasi dan mana yang dinilai AI.",
+        "cara-kerja",
+    ),
+    STEPS_HTML,
+    sec_head(
+        "Perbandingan",
+        "Kenapa bukan <em>tebak-tebakan?</em>",
+        "Menilai tulisan AI dengan perasaan sering meleset, dan satu angka tanpa penjelasan sulit dipertanggungjawabkan. "
+        "Di sini setiap hitungan diperlihatkan.",
+        "perbandingan",
+    ),
+    CMP_HTML,
+    sec_head("FAQ", "Pertanyaan yang <em>sering muncul.</em>", "", "faq"),
+    FAQ_HTML,
+)
+
+
 # ---------------- Tampilan Utama ----------------
 st.markdown(
     html_block(
