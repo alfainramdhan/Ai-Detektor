@@ -62,7 +62,6 @@ WEIGHTS = {
     "awkward_synonyms": 5,
 }
 
-# 22 Indikator Checklist Labels
 LABELS = {
     "burstiness": "Burstiness (variasi panjang kalimat)",
     "perplexity": "Perplexity (estimasi LLM)",
@@ -212,24 +211,45 @@ def compute_local(text):
 
 
 def score_local(key, v):
+    """
+    PERBAIKAN LOGIKA KALIBRASI:
+    0 = Mirip Manusia, 100 = Mirip AI.
+    """
     if v is None:
         return None
+        
+    # BURSTINESS: Semakin KECIL CV (seragam), semakin mirip AI (Skor AI Tinggi)
     if key == "burstiness":
-        return 100 if v < 0.35 else 50 if v < 0.65 else 0
+        return 100 if v < 0.35 else 50 if v < 0.55 else 0
+        
+    # MTLD: Semakin KECIL MTLD (kosakata miskin/terbatas), semakin mirip AI
     if key == "mtld":
-        return 100 if v < 45 else 60 if v < 65 else 30 if v < 85 else 0
+        return 100 if v < 45 else 60 if v < 65 else 0
+        
+    # TRANSISI: Semakin BANYAK kata transisi, semakin mirip AI
     if key == "transisi":
-        return 100 if v > 4 else 70 if v > 2.5 else 30 if v > 1 else 0
+        return 100 if v > 3.0 else 60 if v > 1.8 else 0
+        
+    # KLISE: Semakin BANYAK frasa klise, semakin mirip AI
     if key == "klise":
-        return 100 if v > 5 else 70 if v >= 3 else 30 if v >= 1 else 0
+        return 100 if v >= 3.0 else 60 if v >= 1.0 else 0
+        
+    # BOMBASTIS: Semakin BANYAK kata hiper-formal, semakin mirip AI
     if key == "bombastis":
-        return 100 if v > 3 else 60 if v > 1.5 else 30 if v > 0.5 else 0
+        return 100 if v > 2.0 else 60 if v > 1.0 else 0
+        
+    # TRIGRAM: Semakin BANYAK pengulangan 3-kata, semakin mirip AI
     if key == "trigram":
-        return 100 if v > 6 else 60 if v > 4 else 30 if v > 3 else 0
+        return 100 if v > 5.0 else 60 if v > 3.0 else 0
+        
+    # PARAGRAF: Semakin KECIL CV (paragraf simetris), semakin mirip AI
     if key == "paragraf":
-        return 100 if v < 0.2 else 60 if v < 0.35 else 30 if v < 0.5 else 0
+        return 100 if v < 0.30 else 60 if v < 0.45 else 0
+        
+    # DASH: Semakin BANYAK tanda pisah panjang (—), semakin mirip AI
     if key == "dash":
-        return 100 if v > 5 else 60 if v >= 2 else 30 if v > 0 else 0
+        return 100 if v > 3.0 else 60 if v > 1.0 else 0
+        
     return None
 
 
