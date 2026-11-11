@@ -138,6 +138,44 @@ def clean_text(pages):
     return t.strip()
 
 
+def _docx_paragraphs(doc):
+    """Ambil semua paragraf DOCX sesuai urutan: badan, tabel (termasuk tabel bersarang),
+    text box/shape, dan content control. doc.paragraphs saja melewatkan semua itu."""
+    from docx.oxml.ns import qn
+
+    W_P, W_T, W_TAB, W_BR = qn("w:p"), qn("w:t"), qn("w:tab"), qn("w:br")
+    FALLBACK = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Fallback"
+
+    def in_fallback(el):
+        # Text box disimpan dua kali (Choice + Fallback); lewati salinan Fallback.
+        p = el.getparent()
+        while p is not None:
+            if p.tag == FALLBACK:
+                return True
+            p = p.getparent()
+        return False
+
+    out = []
+    for p in doc.element.body.iter(W_P):
+        if in_fallback(p):
+            continue
+        parts = []
+        for node in p.iter(W_T, W_TAB, W_BR):
+            owner = node.getparent()
+            while owner is not None and owner.tag != W_P:
+                owner = owner.getparent()
+            if owner is not p:
+                continue  # milik paragraf di dalam text box; dibaca terpisah
+            if node.tag == W_T:
+                parts.append(node.text or "")
+            else:
+                parts.append(" ")
+        line = re.sub(r"\s+", " ", "".join(parts)).strip()
+        if line:
+            out.append(line)
+    return out
+
+
 def extract_text(file_path):
     from pypdf import PdfReader
     from docx import Document
@@ -147,9 +185,7 @@ def extract_text(file_path):
         reader = PdfReader(file_path)
         return clean_text([(page.extract_text() or "") for page in reader.pages])
     if ext == ".docx":
-        doc = Document(file_path)
-        paras = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
-        return clean_text(["\n\n".join(paras)])
+        return clean_text(["\n\n".join(_docx_paragraphs(Document(file_path)))])
     raise ValueError("Format tidak didukung. Gunakan PDF atau DOCX.")
 
 
