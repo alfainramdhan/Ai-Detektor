@@ -167,6 +167,20 @@ button[data-testid="stBaseButton-primary"]:hover,button[kind="primary"]:hover{ba
 .faq details[open] summary:after{content:"–";background:var(--black);color:var(--cream);border-color:var(--black);}
 .faq p{margin:.9rem 0 0;max-width:720px;color:var(--muted);line-height:1.7;font-size:1rem;}
 @media (max-width:900px){.steps{grid-template-columns:repeat(2,1fr);row-gap:2rem;}.steps:before{display:none;}}
+
+/* ===== HUMANIZER ===== */
+.hz-note{background:#f7ece6;border:1px solid #ecd6c9;border-radius:16px;padding:1rem 1.2rem;color:var(--charcoal);
+  font-family:"Archivo",sans-serif;font-size:.92rem;line-height:1.6;margin:.4rem 0 1rem;}
+.hz-text{background:var(--white);border:1px solid var(--ash);border-radius:16px;padding:1.4rem 1.6rem;white-space:pre-wrap;
+  font-family:"Archivo",sans-serif;font-size:1rem;line-height:1.75;color:var(--black);max-height:620px;overflow-y:auto;}
+.hz-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:1rem 0 1.2rem;}
+@media (max-width:720px){.hz-grid{grid-template-columns:1fr;}}
+.hz-feat{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.hz-feat div{background:var(--white);border:1px solid var(--ash);border-radius:20px;padding:1.4rem;}
+.hz-feat b{display:block;font-family:"Cormorant Garamond",serif;font-weight:400;font-size:1.6rem;line-height:1.1;margin-bottom:.5rem;}
+.hz-feat p{margin:0;color:var(--muted);font-size:.92rem;line-height:1.55;}
+@media (max-width:900px){.hz-feat{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:560px){.hz-feat{grid-template-columns:1fr;}}
 @media (max-width:720px){.nav-links{display:none;}.nav{padding-left:1.1rem;}.sec{margin-top:4rem;}}
 """
 
@@ -365,6 +379,107 @@ def summary_csv(results):
     return pd.DataFrame(rows).to_csv(index=False).encode("utf-8-sig")
 
 
+def _safe_stem(name):
+    stem = os.path.splitext(os.path.basename(name))[0] or "teks"
+    return re.sub(r"[^\w\-]+", "_", stem)[:60]
+
+
+def render_humanize_result(name, r, idx):
+    st.markdown(f'<div class="file-title">✍️ {html.escape(name)}</div>', unsafe_allow_html=True)
+    if r["status"] != "ok":
+        st.warning("Tidak disunting: " + scrub(r["reason"]))
+        return
+
+    mb, ma = r["metrics_before"], r["metrics_after"]
+    st.markdown(
+        html_block(
+            '<div class="hz-grid">',
+            f'<div class="stat"><b>{mb["n_pass"]}/{mb["n_rows"]} → {ma["n_pass"]}/{ma["n_rows"]}</b><span>Metrik lulus</span></div>',
+            f'<div class="stat"><b>{mb["n_words"]:,} → {ma["n_words"]:,}</b><span>Jumlah kata</span></div>',
+            f'<div class="stat"><b>{len(r["integrity"])}</b><span>Peringatan integritas</span></div>',
+            "</div>",
+        ),
+        unsafe_allow_html=True,
+    )
+    for n in r["notes"][1:]:
+        st.caption("ℹ️ " + n)
+    if r["integrity"]:
+        st.warning(
+            "Periksa sebelum dipakai:\n\n" + "\n".join(f"- {html.escape(msg)}" for _, msg in r["integrity"])
+        )
+
+    tabs = st.tabs(
+        [
+            "1. Revisi akhir",
+            "2. Audit",
+            "3. Keputusan diksi",
+            "4. Poin konfirmasi",
+            "5. Metrik sebelum/sesudah",
+            "6. Draf & teks asli",
+        ]
+    )
+    with tabs[0]:
+        st.markdown(f'<div class="hz-text">{html.escape(r["final"])}</div>', unsafe_allow_html=True)
+        with st.expander("Salin teks"):
+            st.code(r["final"], language=None)
+        stem = _safe_stem(name)
+        c1, c2 = st.columns(2)
+        with c1:
+            st.download_button(
+                "⬇️ Unduh revisi (.docx)",
+                core.to_docx_bytes(f"Revisi: {name}", r["final"]),
+                file_name=f"{stem}_humanized.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"hz_docx_{idx}",
+            )
+        with c2:
+            st.download_button(
+                "⬇️ Unduh revisi (.txt)",
+                r["final"].encode("utf-8"),
+                file_name=f"{stem}_humanized.txt",
+                mime="text/plain",
+                key=f"hz_txt_{idx}",
+            )
+    with tabs[1]:
+        st.markdown("**Apa yang masih membuat teks terbaca sebagai tulisan AI atau terjemahan?**")
+        if r["audit"]:
+            st.markdown("\n".join(f"- {a}" for a in r["audit"]))
+        else:
+            st.write("Tidak ada temuan audit.")
+        if r["perubahan"]:
+            st.markdown("**Perubahan terpenting**")
+            st.dataframe(
+                pd.DataFrame(r["perubahan"], columns=["Kalimat asli", "Kalimat revisi", "Alasan (kode katalog)"]),
+                hide_index=True,
+            )
+    with tabs[2]:
+        if r["diksi"]:
+            st.dataframe(
+                pd.DataFrame(r["diksi"], columns=["Istilah lama", "Istilah baru", "Alasan", "Jumlah"]),
+                hide_index=True,
+            )
+            st.caption("Keputusan istilah adalah wewenang penulis. Terapkan atau kembalikan secara konsisten di seluruh dokumen.")
+        else:
+            st.write("Tidak ada istilah yang diganti.")
+    with tabs[3]:
+        if r["konfirmasi"]:
+            st.markdown("\n".join(f"- {k}" for k in r["konfirmasi"]))
+        else:
+            st.write("Tidak ada poin substansi yang perlu dikonfirmasi.")
+        st.caption("Substansi (angka, klaim, sitasi, nomor tabel/gambar) tidak diubah diam-diam. Penulis yang memutuskan.")
+    with tabs[4]:
+        st.dataframe(pd.DataFrame(core.metrics_compare_rows(mb, ma)), hide_index=True)
+        st.caption(
+            f"Preset {r['register']}. Lulus seluruh metrik adalah syarat perlu, bukan syarat cukup: "
+            "kalke dan personifikasi tidak terlihat oleh metrik."
+        )
+    with tabs[5]:
+        st.markdown("**Draf (putaran pertama)**")
+        st.markdown(f'<div class="hz-text">{html.escape(r["draft"])}</div>', unsafe_allow_html=True)
+        st.markdown("**Teks asli**")
+        st.markdown(f'<div class="hz-text">{html.escape(r["original"])}</div>', unsafe_allow_html=True)
+
+
 SLIDES = [
     (
         "01",
@@ -423,7 +538,7 @@ MARQUEE_HTML = f'<div class="marquee"><div class="marquee-in">{_MQ}{_MQ}</div></
 
 NAV_HTML = (
     '<div class="nav"><a class="nav-brand" href="#" target="_self">Apeng<i>.</i></a><div class="nav-links">'
-    '<a href="#fitur" target="_self">Fitur</a><a href="#cara-kerja" target="_self">Cara kerja</a>'
+    '<a href="#fitur" target="_self">Fitur</a><a href="#humanizer" target="_self">Humanizer</a><a href="#cara-kerja" target="_self">Cara kerja</a>'
     '<a href="#perbandingan" target="_self">Perbandingan</a><a href="#faq" target="_self">FAQ</a></div>'
     '<a class="nav-cta" href="#mulai" target="_self">Mulai analisis</a></div>'
 )
@@ -508,13 +623,40 @@ FAQS = [
         "Kenapa skornya bisa sedikit berbeda saat diulang?",
         "Bagian penilaian oleh AI bisa bervariasi tipis antar percobaan. Statistik lokal selalu sama untuk teks yang sama.",
     ),
+    (
+        "Apa itu mode Humanizer?",
+        "Penyunting bahasa Indonesia berbasis skill Humanizer Indonesia. Ia membuang nominalisasi, konektor berlebih, "
+        "kalke dari bahasa Inggris, dan ritme kalimat yang seragam, lalu menyerahkan draf, audit, keputusan diksi, "
+        "poin konfirmasi, dan perbandingan metrik sebelum dan sesudah.",
+    ),
+    (
+        "Apakah hasil Humanizer pasti lolos detektor AI?",
+        "Tidak, dan memang bukan itu tujuannya. Teks yang disunting otomatis tetap dapat terdeteksi sebagai tulisan AI. "
+        "Hasilnya adalah draf yang lebih enak dibaca untuk Anda sunting sendiri. Ungkapkan pemakaian AI jika diwajibkan.",
+    ),
 ]
 FAQ_HTML = (
     '<div class="faq">' + "".join(f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in FAQS) + "</div>"
 )
 
 # Deklarasi gabungan komponen komponen HTML landing page
+HZ_FEATS = [
+    ("Draf, audit, revisi", "Dua putaran: draf mengikuti katalog pola, lalu audit dan revisi akhir dengan metrik terbaru."),
+    ("Kalke & diksi", "Kalimat terjemahan, personifikasi, dan pembuka monoton ditulis ulang, bukan sekadar diganti sinonim."),
+    ("Angka tetap utuh", "Angka, rujukan gambar/tabel, dan sitasi diperiksa otomatis agar tidak ada yang hilang."),
+    ("Transparan", "Keputusan diksi, poin konfirmasi, dan metrik sebelum-sesudah ditampilkan untuk Anda nilai."),
+]
+HUMANIZER_HTML = '<div class="hz-feat">' + "".join(f"<div><b>{t}</b><p>{d}</p></div>" for t, d in HZ_FEATS) + "</div>"
+
 SECTIONS_HTML = html_block(
+    sec_head(
+        "Humanizer",
+        "Rapikan bahasa, <em>bukan menyamarkan.</em>",
+        "Pilih mode Humanizer di kotak analisis untuk menyunting teks bahasa Indonesia agar tidak kaku dan tidak terasa "
+        "terjemahan. Hasilnya draf untuk Anda sunting, bukan alat untuk lolos detektor.",
+        "humanizer",
+    ),
+    HUMANIZER_HTML,
     sec_head(
         "Cara kerja",
         "Enam langkah, dari berkas <em>sampai skor.</em>",
@@ -578,6 +720,36 @@ except TypeError:
     card = st.container(border=True)
 
 with card:
+    mode = st.radio(
+        "Mode",
+        ["🔎 AI Detector", "✍️ Humanizer"],
+        horizontal=True,
+        key="mode",
+        label_visibility="collapsed",
+    )
+    is_hz = mode.endswith("Humanizer")
+    if is_hz:
+        st.markdown(f'<div class="hz-note">{html.escape(core.HUMANIZER_DISCLAIMER)}</div>', unsafe_allow_html=True)
+        oc1, oc2 = st.columns(2)
+        with oc1:
+            hz_register = st.selectbox(
+                "Register sasaran",
+                list(core.HUMANIZER_REGISTERS),
+                format_func=lambda k: core.HUMANIZER_REGISTERS[k],
+                key="hz_register",
+            )
+        with oc2:
+            hz_voice = st.selectbox(
+                "Suara penulis",
+                list(core.HUMANIZER_VOICES),
+                format_func=lambda k: core.HUMANIZER_VOICES[k],
+                key="hz_voice",
+                help="Netral jika Anda tidak punya preset suara. Preset PRIB adalah contoh suara milik penulis skill.",
+            )
+        hz_english = st.checkbox(
+            "Teks ini disusun dari sumber berbahasa Inggris (slide, laporan lembaga, standar)",
+            key="hz_english",
+        )
     tab_file, tab_text = st.tabs(["📎 Unggah file", "✍️ Tempel teks"])
     with tab_file:
         files = st.file_uploader(
@@ -590,7 +762,7 @@ with card:
             placeholder="Tempel teks di sini (minimal ±200 kata)...",
             label_visibility="collapsed",
         )
-    run = st.button("Analisis", type="primary")
+    run = st.button("Humanize" if is_hz else "Analisis", type="primary")
 
 if run:
     if not api_key:
@@ -626,8 +798,34 @@ if run:
         drive_futs = [(n, pool.submit(_bg_upload, n, d, m)) for n, d, m in uploads]
 
     client = anthropic.Anthropic(api_key=api_key)
+
+    if is_hz:
+        hz_todo = []
+        for name, text in inputs:
+            ok, why = core.humanize_eligibility(text)
+            if not ok:
+                st.warning(f"{name}: {why} Dilewati.")
+                continue
+            hz_todo.append((name, text))
+        hz_results = []
+        if hz_todo:
+            with st.spinner(f"Menyunting {len(hz_todo)} dokumen (draf, audit, revisi akhir) ..."):
+                with ThreadPoolExecutor(max_workers=2) as ex:
+                    futs = [
+                        (n, ex.submit(core.humanize, client, t, hz_register, hz_voice, hz_english))
+                        for n, t in hz_todo
+                    ]
+                    for n, fu in futs:
+                        try:
+                            hz_results.append((n, fu.result()))
+                        except Exception as e:
+                            st.error(f"{n}: gagal disunting. {scrub(e)}")
+        st.session_state["hz_results"] = hz_results
+        if DRIVE_ON and drive_futs:
+            wait([fu for _, fu in drive_futs], timeout=30)
+
     todo = []
-    for name, text in inputs:
+    for name, text in ([] if is_hz else inputs):
         if len(core.tokenize(text)) < 50:
             st.warning(f"{name}: teks terlalu pendek atau PDF hasil scan (tanpa teks). Dilewati.")
             continue
@@ -644,15 +842,23 @@ if run:
                     except Exception as e:
                         st.error(f"{n}: gagal dianalisis. {scrub(e)}")
 
-    st.session_state["results"] = results
+    if not is_hz:
+        st.session_state["results"] = results
 
-    if DRIVE_ON:
+    if DRIVE_ON and not is_hz:
         if results:
             pool.submit(_bg_upload, "hasil_deteksi.csv", summary_csv(results), "text/csv")
         if drive_futs:
             wait([fu for _, fu in drive_futs], timeout=30)
 
-results = st.session_state.get("results", [])
+results = st.session_state.get("results", []) if not is_hz else []
+if is_hz:
+    hz_results = st.session_state.get("hz_results", [])
+    if hz_results:
+        st.divider()
+        for i, (name, r) in enumerate(hz_results):
+            render_humanize_result(name, r, i)
+            st.divider()
 if results:
     st.divider()
     for name, r in results:
@@ -667,7 +873,7 @@ st.markdown(SECTIONS_HTML, unsafe_allow_html=True)
 st.markdown(
     html_block(
         '<div class="fine">',
-        (html.escape(core.DISCLAIMER) + "<br>") if results else "",
+        (html.escape(core.DISCLAIMER) + "<br>") if (results or (is_hz and st.session_state.get("hz_results"))) else "",
         "All documents will not be leaked, shared, or published. Your files are processed solely for evaluation purposes.",
         "</div>",
     ),
