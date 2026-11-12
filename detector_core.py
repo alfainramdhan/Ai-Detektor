@@ -534,8 +534,9 @@ DISCLAIMER = "Dibuat khusus Teman Teman Apeng."
 # =====================================================================================
 
 HUMANIZER_MODEL = "claude-sonnet-5-5"
-HUMANIZER_MAX_TOKENS = 12000
-HUMANIZER_CHUNK_CHARS = 7000
+HUMANIZER_MAX_TOKENS = 32000
+HUMANIZER_CHUNK_CHARS = 4500
+HUMANIZER_MAX_SPLIT_DEPTH = 2
 HUMANIZER_MAX_CHARS = 40000
 HUMANIZER_MIN_WORDS = 30
 HUMANIZER_REF_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "humanizer_ref")
@@ -1026,21 +1027,31 @@ def _rows(block, ncols):
     return rows
 
 
+class OutputTruncated(RuntimeError):
+    """Keluaran model mencapai batas token; bagian teks perlu dipecah lagi."""
+
+
 def _call(client, model, system, prompt):
     import anthropic
 
+    kwargs = dict(
+        model=model,
+        max_tokens=HUMANIZER_MAX_TOKENS,
+        system=system,
+        messages=[{"role": "user", "content": prompt}],
+    )
     try:
-        resp = client.messages.create(
-            model=model,
-            max_tokens=HUMANIZER_MAX_TOKENS,
-            system=system,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        if hasattr(client.messages, "stream"):
+            # Streaming wajib untuk max_tokens besar agar tidak ditolak SDK (batas 10 menit non-streaming).
+            with client.messages.stream(**kwargs) as stream:
+                resp = stream.get_final_message()
+        else:
+            resp = client.messages.create(**kwargs)
     except anthropic.APIStatusError as e:
         raise RuntimeError(f"Error API ({e.status_code}): {e.message}") from e
     out = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
     if getattr(resp, "stop_reason", "") == "max_tokens":
-        raise RuntimeError("Keluaran model terpotong (batas token). Coba bagi teks menjadi bagian yang lebih kecil.")
+        raise OutputTruncated("Keluaran model terpotong (batas token).")
     return out
 
 
@@ -1085,18 +1096,74 @@ revisi akhir lengkap, paragraf dipisah satu baris kosong
 </konfirmasi>"""
 
 
+def _unwrap_lines(text):
+    """Satukan baris PDF yang terpotong tata letak menjadi paragraf utuh.
+
+    pypdf mengembalikan satu baris per baris cetak. Baris digabung dengan baris berikutnya
+    kecuali tampak sebagai akhir paragraf (diakhiri tanda titik dan lebih pendek dari baris
+    penuh) atau sebagai judul (pendek, tanpa tanda baca akhir, diikuti huruf kapital).
+    """
+    out = []
+    for block in re.split(r"\n\s*\n", text):
+        lines = [l.strip() for l in block.split("\n") if l.strip()]
+        if len(lines) <= 1:
+            out.extend(lines)
+            continue
+        full = sorted(len(l) for l in lines)[int(len(lines) * 0.75)]
+        paras, cur = [], lines[0]
+        for prev, nxt in zip(lines, lines[1:]):
+            ends = re.search(r"[.!?:;\"”)]$", prev)
+            heading = not ends and len(tokenize(prev)) <= 8 and nxt[:1].isupper()
+            para_end = ends and len(prev) < 0.85 * full
+            if heading or para_end:
+                paras.append(cur)
+                cur = nxt
+            elif cur.endswith("-") and nxt[:1].islower():
+                cur = cur[:-1] + nxt  # pemenggalan kata di akhir baris
+            else:
+                cur = cur + " " + nxt
+        paras.append(cur)
+        out.extend(paras)
+    return "\n\n".join(out)
+
+
+def _split_long(p, size):
+    """Pecah satu paragraf yang lebih panjang dari size per batas kalimat."""
+    if len(p) <= size:
+        return [p]
+    pieces, cur = [], ""
+    for sent in re.split(r"(?<=[.!?])\s+", p):
+        while len(sent) > size:  # kalimat raksasa tanpa titik: potong di spasi
+            cut = sent.rfind(" ", 0, size)
+            cut = cut if cut > 0 else size
+            if cur:
+                pieces.append(cur)
+                cur = ""
+            pieces.append(sent[:cut])
+            sent = sent[cut:].strip()
+        if cur and len(cur) + len(sent) + 1 > size:
+            pieces.append(cur)
+            cur = sent
+        else:
+            cur = (cur + " " + sent) if cur else sent
+    if cur:
+        pieces.append(cur)
+    return pieces
+
+
 def _split_chunks(text, size=None):
     size = size or HUMANIZER_CHUNK_CHARS
     paras = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     if len(paras) <= 1:
         paras = [p.strip() for p in text.split("\n") if p.strip()]
     chunks, cur = [], ""
-    for p in paras:
-        if cur and len(cur) + len(p) + 2 > size:
-            chunks.append(cur)
-            cur = p
-        else:
-            cur = (cur + "\n\n" + p) if cur else p
+    for big in paras:
+        for p in _split_long(big, size):
+            if cur and len(cur) + len(p) + 2 > size:
+                chunks.append(cur)
+                cur = p
+            else:
+                cur = (cur + "\n\n" + p) if cur else p
     if cur:
         chunks.append(cur)
     return chunks or [text]
@@ -1149,6 +1216,8 @@ def humanize(client, text, register="akademik", voice="netral", english_source=F
     voice = voice if voice in HUMANIZER_VOICES else "netral"
     model = model or HUMANIZER_MODEL
     text = text.strip()
+    if text.count("\n") > 3 * max(1, text.count("\n\n")):
+        text = _unwrap_lines(text)  # teks PDF: baris cetak -> paragraf
 
     ok, why = humanize_eligibility(text)
     if not ok:
@@ -1156,13 +1225,28 @@ def humanize(client, text, register="akademik", voice="netral", english_source=F
 
     chunks = _split_chunks(text)
     total = len(chunks)
+
+    def run(chunk, part, depth=0):
+        """Sunting satu bagian; jika keluaran terpotong, pecah dua dan ulangi."""
+        try:
+            return [_humanize_chunk(client, chunk, register, voice, english_source, part, model)]
+        except OutputTruncated:
+            halves = _split_chunks(chunk, max(800, len(chunk) // 2 + 1))
+            if depth >= HUMANIZER_MAX_SPLIT_DEPTH or len(halves) < 2:
+                raise RuntimeError(
+                    "Keluaran model terpotong walaupun teks sudah dipecah. Coba unggah dokumen per bab."
+                )
+            out = []
+            for h in halves:
+                out.extend(run(h, part or (1, 1), depth + 1))
+            return out
+
     with ThreadPoolExecutor(max_workers=max(1, min(max_workers, total))) as ex:
         futs = [
-            ex.submit(_humanize_chunk, client, c, register, voice, english_source,
-                      (i, total) if total > 1 else None, model)
+            ex.submit(run, c, (i, total) if total > 1 else None)
             for i, c in enumerate(chunks, 1)
         ]
-        parts = [f.result() for f in futs]
+        parts = [p for f in futs for p in f.result()]
 
     rejected = [p["rejected"] for p in parts if p.get("rejected")]
     if rejected:
